@@ -1,15 +1,13 @@
 import { ConnectWallet } from "./components/ConnectWallet";
 import { useController } from "./hooks/useController";
 import { Actions } from "./components/Actions";
-
+import Stats from "./components/Stats";
 
 export default function App() {
   const {
     minersPool,
     rewardPool,
     totalPU,
-    userPU,
-    stakedSMOS,
   } = useController();
 
   return (
@@ -24,13 +22,15 @@ export default function App() {
           <ConnectWallet />
         </div>
 
+        {/* ───── Protocol Stats ───── */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <Stat label="Miners Pool" value={minersPool.data} />
           <Stat label="Reward Pool" value={rewardPool.data} />
           <Stat label="Total PU" value={totalPU.data} />
-          <Stat label="Your PU" value={userPU.data} />
-          <Stat label="Staked SMOS" value={stakedSMOS.data} />
         </div>
+
+        {/* ───── User Stats ───── */}
+        <Stats />
 
         <Actions />
 
@@ -44,7 +44,7 @@ function Stat({ label, value }: { label: string; value?: bigint }) {
     <div className="bg-gray-100 rounded p-3 text-center">
       <div className="text-gray-500">{label}</div>
       <div className="font-semibold">
-        {value ? value.toString() : "—"}
+        {value !== undefined ? value.toString() : "—"}
       </div>
     </div>
   );
