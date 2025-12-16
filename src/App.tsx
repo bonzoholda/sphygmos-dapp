@@ -1,5 +1,7 @@
 import { ConnectWallet } from "./components/ConnectWallet";
 import { useController } from "./hooks/useController";
+import { Actions } from "./components/Actions";
+
 
 export default function App() {
   const {
@@ -29,6 +31,8 @@ export default function App() {
           <Stat label="Your PU" value={userPU.data} />
           <Stat label="Staked SMOS" value={stakedSMOS.data} />
         </div>
+
+        <Actions />
 
       </div>
     </div>
