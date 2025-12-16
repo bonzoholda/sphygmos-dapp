@@ -13,3 +13,7 @@ body {
 .btn-outline {
   @apply bg-white text-black border border-black;
 }
+
+button:disabled {
+  @apply opacity-60 cursor-not-allowed;
+}
