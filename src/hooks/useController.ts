@@ -1,10 +1,15 @@
 import { useAccount, useReadContract } from "wagmi";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
+import { useWriteContract } from "wagmi";
+
 
 const controllerAddress = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
 
 export function useController() {
   const { address } = useAccount();
+  const acquirePU = useWriteContract();
+  const stakeSMOS = useWriteContract();
+  const claimMiner = useWriteContract();
 
   const minersPool = useReadContract({
     address: controllerAddress,
@@ -46,5 +51,9 @@ export function useController() {
     totalPU,
     userPU,
     stakedSMOS,
+    acquirePU,
+    stakeSMOS,
+    claimMiner,
   };
+
 }
