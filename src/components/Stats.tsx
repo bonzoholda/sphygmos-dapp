@@ -8,31 +8,37 @@ const CONTROLLER_ADDRESS = import.meta.env
 export default function Stats() {
   const { address } = useAccount();
 
-  // Power Units
   const { data: userPU } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "userPU",
     args: address ? [address] : undefined,
+    query: { enabled: !!address },
   });
 
-  // Staked SMOS
   const { data: stakedSMOS } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "stakedSMOS",
     args: address ? [address] : undefined,
+    query: { enabled: !!address },
   });
+
+  if (!address) {
+    return (
+      <div className="text-center text-sm text-slate-400">
+        Connect wallet to view your stats
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <StatCard label="Power Units" value={fmt(userPU)} />
+      <StatCard label="Your Power Units" value={fmt(userPU)} />
       <StatCard label="Staked SMOS" value={fmt(stakedSMOS)} />
     </div>
   );
 }
-
-/* ───────────────────────────── */
 
 function StatCard({
   label,
