@@ -33,5 +33,27 @@ export const SPHYGMOS_CONTROLLER_ABI = [
     "stateMutability": "view",
     "inputs": [{ "name": "", "type": "address" }],
     "outputs": [{ "type": "uint256" }]
-  }
+  },
+{
+  "type": "function",
+  "name": "depositPush",
+  "stateMutability": "nonpayable",
+  "inputs": [{ "name": "usdtAmount", "type": "uint256" }],
+  "outputs": []
+},
+{
+  "type": "function",
+  "name": "stake",
+  "stateMutability": "nonpayable",
+  "inputs": [{ "name": "amount", "type": "uint256" }],
+  "outputs": []
+},
+{
+  "type": "function",
+  "name": "claimMinerRewards",
+  "stateMutability": "nonpayable",
+  "inputs": [],
+  "outputs": []
+}
+  
 ] as const;
