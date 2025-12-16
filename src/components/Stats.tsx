@@ -8,9 +8,7 @@ const CONTROLLER_ADDRESS = import.meta.env
 export default function Stats() {
   const { address } = useAccount();
 
-  // ─────────────────────────────
-  // Read Power Units
-  // ─────────────────────────────
+  // Power Units
   const { data: userPU } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
@@ -18,19 +16,7 @@ export default function Stats() {
     args: address ? [address] : undefined,
   });
 
-  // ─────────────────────────────
-  // Read pending miner rewards
-  // ─────────────────────────────
-  const { data: pendingMinerRewards } = useReadContract({
-    address: CONTROLLER_ADDRESS,
-    abi: SPHYGMOS_CONTROLLER_ABI,
-    functionName: "pendingMinerRewards",
-    args: address ? [address] : undefined,
-  });
-
-  // ─────────────────────────────
-  // Read staked SMOS
-  // ─────────────────────────────
+  // Staked SMOS
   const { data: stakedSMOS } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
@@ -40,20 +26,8 @@ export default function Stats() {
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <StatCard
-        label="Power Units"
-        value={fmt(userPU)}
-      />
-
-      <StatCard
-        label="Pending Miner Rewards"
-        value={fmt(pendingMinerRewards)}
-      />
-
-      <StatCard
-        label="Staked SMOS"
-        value={fmt(stakedSMOS)}
-      />
+      <StatCard label="Power Units" value={fmt(userPU)} />
+      <StatCard label="Staked SMOS" value={fmt(stakedSMOS)} />
     </div>
   );
 }
