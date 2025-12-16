@@ -1,6 +1,6 @@
 import { useAccount, useReadContract } from "wagmi";
 import { fmt } from "../utils/format";
-import { SPHYGMOS_CONTROLLER_ABI } from "../abi/controller";
+import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 
 const CONTROLLER_ADDRESS = import.meta.env
   .VITE_CONTROLLER_ADDRESS as `0x${string}`;
