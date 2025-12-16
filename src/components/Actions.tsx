@@ -1,5 +1,6 @@
 import { parseUnits } from "viem";
 import { useAccount } from "wagmi";
+import { useBalance } from "wagmi";
 import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 import { useState } from "react";
@@ -18,48 +19,104 @@ export function Actions() {
   const [puTx, setPuTx] = useState<`0x${string}`>();
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
+  const [puAmount, setPuAmount] = useState("");
+  const [stakeAmount, setStakeAmount] = useState("");
+
+  const { data: usdtBal } = useBalance({
+    address,
+    token: USDT_ADDRESS,
+  });
+  
+  const { data: smosBal } = useBalance({
+    address,
+    token: SMOS_ADDRESS,
+  });
+
 
   if (!address) return null;
 
   return (
     <div className="space-y-4">
 
-      <button
-        className="btn"
-        disabled={acquirePU.isPending}
-        onClick={async () => {
-          const hash = await acquirePU.writeContractAsync({
-            address: controller,
-            abi: SPHYGMOS_CONTROLLER_ABI,
-            functionName: "depositPush",
-            args: [parseUnits("10", 18)],
-          });
-          setPuTx(hash);
-        }}
-      >
-        {acquirePU.isPending ? "Processing…" : "Acquire Power Units"}
-      </button>
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="number"
+            placeholder="Amount"
+            value={puAmount}
+            onChange={(e) => setPuAmount(e.target.value)}
+            className="input w-full"
+          />
       
-      <TxStatus hash={puTx} />
+          <button
+            className="btn btn-outline"
+            onClick={() =>
+              setPuAmount(usdtBal ? usdtBal.formatted : "")
+            }
+          >
+            MAX
+          </button>
+        </div>
+      
+        <button
+          className="btn w-full"
+          disabled={acquirePU.isPending || !puAmount}
+          onClick={async () => {
+            const hash = await acquirePU.writeContractAsync({
+              address: controller,
+              abi: SPHYGMOS_CONTROLLER_ABI,
+              functionName: "depositPush",
+              args: [parseUnits(puAmount, 18)],
+            });
+            setPuTx(hash);
+          }}
+        >
+          {acquirePU.isPending ? "Processing…" : "Acquire Power Units"}
+        </button>
+      
+        <TxStatus hash={puTx} />
+      </div>
 
+
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="number"
+            placeholder="Stake amount"
+            value={stakeAmount}
+            onChange={(e) => setStakeAmount(e.target.value)}
+            className="input w-full"
+          />
       
-      <button
-        className="btn"
-        disabled={stakeSMOS.isPending}
-        onClick={async () => {
-          const hash = await stakeSMOS.writeContractAsync({
-            address: controller,
-            abi: SPHYGMOS_CONTROLLER_ABI,
-            functionName: "stake",
-            args: [parseUnits("5", 18)],
-          });
-          setStakeTx(hash);
-        }}
-      >
-        {stakeSMOS.isPending ? "Staking…" : "Stake SMOS"}
-      </button>
+          <button
+            className="btn btn-outline"
+            onClick={() =>
+              setStakeAmount(smosBal ? smosBal.formatted : "")
+            }
+          >
+            MAX
+          </button>
+        </div>
       
-      <TxStatus hash={stakeTx} />
+        <button
+          className="btn w-full"
+          disabled={stakeSMOS.isPending || !stakeAmount}
+          onClick={async () => {
+            const hash = await stakeSMOS.writeContractAsync({
+              address: controller,
+              abi: SPHYGMOS_CONTROLLER_ABI,
+              functionName: "stake",
+              args: [parseUnits(stakeAmount, 18)],
+            });
+            setStakeTx(hash);
+          }}
+        >
+          {stakeSMOS.isPending ? "Staking…" : "Stake SMOS"}
+        </button>
+      
+        <TxStatus hash={stakeTx} />
+      </div>
+
 
       <button
         className="btn btn-outline"
