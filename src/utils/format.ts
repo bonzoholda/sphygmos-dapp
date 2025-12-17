@@ -1,19 +1,26 @@
 import { formatUnits } from "viem";
 
 /**
- * Format bigint token amount for UI
+ * Safe bigint formatter for UI (no Number(), no crashes)
  */
 export function fmt(
   value?: bigint,
   decimals = 18,
   maxDecimals = 4
-) {
-  if (!value) return "0";
+): string {
+  if (value === undefined) return "—";
 
-  const num = Number(formatUnits(value, decimals));
+  try {
+    const formatted = formatUnits(value, decimals); // string
 
-  return num.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: maxDecimals,
-  });
+    const [whole, fraction = ""] = formatted.split(".");
+
+    const trimmedFraction = fraction.slice(0, maxDecimals);
+
+    return trimmedFraction.length > 0
+      ? `${whole}.${trimmedFraction}`
+      : whole;
+  } catch {
+    return "—";
+  }
 }
