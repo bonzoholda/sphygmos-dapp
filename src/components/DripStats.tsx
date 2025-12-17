@@ -47,11 +47,11 @@ export default function DripStats() {
 
   return (
     <div className="panel space-y-4">
-      <h3 className="panel-title">💧 Drip Rewards</h3>
+      <h3 className="panel-title">💧 Dripped SMOS Rewards</h3>
 
       <div className="grid grid-cols-2 gap-4">
         <StatCard
-          label="Drip / Day"
+          label="Drip / Day (SMOS)"
           value={
             dripPerDay > 0n
               ? fmt(dripPerDay, 18, 4)
@@ -60,7 +60,7 @@ export default function DripStats() {
         />
 
         <StatCard
-          label="Your Pending Drip"
+          label="Your Pending Dripped SMOS"
           value={fmt(pendingDrip, 18, 4)}
         />
       </div>
@@ -83,7 +83,7 @@ export default function DripStats() {
       >
         {claimDrip.isPending
           ? "Claiming…"
-          : "Claim Drip Rewards"}
+          : "Claim Dripped SMOS Rewards"}
       </button>
 
       <TxStatus hash={claimTx} />
