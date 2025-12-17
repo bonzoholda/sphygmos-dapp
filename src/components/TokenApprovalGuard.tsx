@@ -3,9 +3,9 @@ import {
   useAccount, 
   useReadContract, 
   useWriteContract, 
-  useWaitForTransactionReceipt,
-  useQueryClient // Added for forcing data updates
+  useWaitForTransactionReceipt 
 } from 'wagmi';
+// 1. Import maxUint256 from viem
 import { parseUnits, maxUint256 } from 'viem';
 
 const MOCK_USDT_ABI = [
@@ -13,38 +13,43 @@ const MOCK_USDT_ABI = [
   {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
 ] as const;
 
-export const TokenApprovalGuard = ({ children, tokenAddress, spenderAddress, amountRequired }: any) => {
+interface Props {
+  children: React.ReactNode;
+  tokenAddress: `0x${string}`;
+  spenderAddress: `0x${string}`;
+  amountRequired: string; // The minimum amount needed to "trigger" the UI
+}
+
+export const TokenApprovalGuard: React.FC<Props> = ({ children, tokenAddress, spenderAddress, amountRequired }) => {
   const { address } = useAccount();
-  const queryClient = useQueryClient();
   const requiredWei = parseUnits(amountRequired, 18);
 
-  const { data: allowance, queryKey } = useReadContract({
+  const { data: allowance, refetch } = useReadContract({
     address: tokenAddress,
     abi: MOCK_USDT_ABI,
     functionName: 'allowance',
     args: address ? [address, spenderAddress] : undefined,
+    query: { enabled: !!address }
   });
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  // FORCE REFRESH: This ensures the UI "sees" the 0 allowance before you click Approve
   useEffect(() => {
-    if (isSuccess) {
-      // Small delay for RPC propagation, then clear cache
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey });
-      }, 2000); 
-    }
-  }, [isSuccess, queryKey, queryClient]);
+    if (isSuccess) refetch();
+  }, [isSuccess, refetch]);
 
+  /**
+   * MODIFIED: handleApprove now sends maxUint256
+   */
   const handleApprove = () => {
     writeContract({
       address: tokenAddress,
       abi: MOCK_USDT_ABI,
       functionName: 'approve',
-      args: [spenderAddress, maxUint256],
-      gas: 80000n, // Slightly higher for mobile safety
+      // We pass maxUint256 here for "Unlimited"
+      args: [spenderAddress, maxUint256], 
+      gas: 70000n, // Still keeping manual gas for TokenPocket
     });
   };
 
@@ -54,46 +59,46 @@ export const TokenApprovalGuard = ({ children, tokenAddress, spenderAddress, amo
       abi: MOCK_USDT_ABI,
       functionName: 'approve',
       args: [spenderAddress, 0n],
-      gas: 60000n,
+      gas: 50000n,
     });
   };
 
   if (!address) return <>{children}</>;
 
-  // CASE 1: Allowance > 0 but < Required (Must Reset first)
-  if (allowance !== undefined && allowance > 0n && allowance < requiredWei) {
+  // Check if current allowance is less than what the app needs right now
+  if (allowance !== undefined && allowance < requiredWei) {
     return (
-      <div className="glass-card p-6 text-center space-y-4">
-        <h3 className="text-red-400 font-bold">Inconsistent Allowance</h3>
-        <p className="text-xs text-slate-400">USDT requires a reset to 0 before changing limits.</p>
-        <button 
-          onClick={handleReset} 
-          disabled={isPending || isConfirming}
-          className="w-full py-3 bg-red-500/20 text-red-400 border border-red-500/50 rounded-lg font-bold"
-        >
-          {isPending || isConfirming ? "Processing Reset..." : "1. Reset to 0"}
-        </button>
+      <div className="rounded-xl bg-black/50 border border-yellow-400/30 p-6 text-center space-y-4">
+        <h3 className="text-yellow-400 font-bold uppercase tracking-wider">Security Permission</h3>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Sphygmos requires permission to move tokens from your wallet. 
+          <br />
+          <span className="text-yellow-400/50">Setting "Unlimited" prevents future popups.</span>
+        </p>
+        
+        <div className="flex flex-col gap-3">
+           {/* If there's a stuck allowance > 0 but < required, show Reset */}
+           {allowance > 0n && (
+             <button 
+               onClick={handleReset}
+               disabled={isPending || isConfirming}
+               className="w-full py-3 px-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-all"
+             >
+               {isPending ? "Processing..." : "Reset Approval (Safety First)"}
+             </button>
+           )}
+           
+           <button 
+             onClick={handleApprove}
+             disabled={isPending || isConfirming}
+             className="w-full py-3 px-4 bg-yellow-400 text-black font-black rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_15px_rgba(243,186,47,0.3)]"
+           >
+             {isPending || isConfirming ? "Waiting for Wallet..." : "Enable Unlimited Spending"}
+           </button>
+        </div>
       </div>
     );
   }
 
-  // CASE 2: Allowance is 0 (Ready to set Unlimited)
-  if (allowance !== undefined && allowance === 0n) {
-    return (
-      <div className="glass-card p-6 text-center space-y-4">
-        <h3 className="text-yellow-400 font-bold uppercase">Enable Trading</h3>
-        <p className="text-xs text-slate-400">Click below to authorize the Sphygmos Controller.</p>
-        <button 
-          onClick={handleApprove} 
-          disabled={isPending || isConfirming}
-          className="w-full py-3 bg-yellow-400 text-black rounded-lg font-black shadow-lg"
-        >
-          {isPending || isConfirming ? "Confirming on Chain..." : "2. Enable Unlimited Spend"}
-        </button>
-      </div>
-    );
-  }
-
-  // CASE 3: Allowance is fine
   return <>{children}</>;
 };
