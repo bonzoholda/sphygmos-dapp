@@ -4,7 +4,7 @@ import { Actions } from "./components/Actions";
 import Stats from "./components/Stats";
 import { fmt } from "./utils/format";
 import DripStats from "./components/DripStats";
-import Logo from "./assets/logo.png";
+import Logo from "./assets/logo.svg";
 
 
 
