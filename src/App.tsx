@@ -2,6 +2,7 @@ import { ConnectWallet } from "./components/ConnectWallet";
 import { useController } from "./hooks/useController";
 import { Actions } from "./components/Actions";
 import Stats from "./components/Stats";
+import { fmt } from "../utils/format";
 
 export default function App() {
   const {
@@ -24,9 +25,9 @@ export default function App() {
 
         {/* ───── Protocol Stats ───── */}
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <Stat label="Miners Pool" value={minersPool.data} />
-          <Stat label="Reward Pool" value={rewardPool.data} />
-          <Stat label="Total PU" value={totalPU.data} />
+          <Stat label="Miners Pool" value={fmt(minersPool.data)} />
+          <Stat label="Reward Pool" value={fmt(rewardPool.data)} />
+          <Stat label="Total PU" value={fmt(totalPU.data)} />
         </div>
 
         {/* ───── User Stats ───── */}
