@@ -20,8 +20,6 @@ export default function App() {
         {/* User Stats */}
         <Stats />
 
-        {/* Actions (Buy PU, Stake, Claim, etc.) */}
-        <Actions />
 
         {/* Footer hint */}
         <p className="text-xs text-center text-slate-500 pt-4">
