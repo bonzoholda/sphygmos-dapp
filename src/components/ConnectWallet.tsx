@@ -3,32 +3,27 @@ import { injected } from "wagmi/connectors";
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
+  const { connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
 
-  if (!isConnected) {
+  if (isConnected) {
     return (
       <button
-        onClick={() => connect({ connector: injected() })}
-        className=""btn wallet-btn""
+        onClick={() => disconnect()}
+        className="btn btn-outline wallet-btn"
       >
-        Connect Wallet
+        {address?.slice(0, 6)}…{address?.slice(-4)}
       </button>
     );
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-gray-700">
-        {address?.slice(0, 6)}…{address?.slice(-4)}
-      </span>
-
-      <button
-        onClick={() => disconnect()}
-        className=""btn wallet-btn""
-      >
-        Disconnect
-      </button>
-    </div>
+    <button
+      onClick={() => connect({ connector: injected() })}
+      className="btn wallet-btn"
+      disabled={isPending}
+    >
+      {isPending ? "Connecting…" : "Connect Wallet"}
+    </button>
   );
 }
