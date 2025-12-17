@@ -99,4 +99,26 @@ export const SPHYGMOS_CONTROLLER_ABI = [
     inputs: [],
     outputs: [],
   },
+  {
+  type: "function",
+  name: "dripRatePerSecond",
+  stateMutability: "view",
+  inputs: [],
+  outputs: [{ type: "uint256" }],
+},
+{
+  type: "function",
+  name: "pendingDripReward",
+  stateMutability: "view",
+  inputs: [{ type: "address" }],
+  outputs: [{ type: "uint256" }],
+},
+{
+  type: "function",
+  name: "claimDripRewards",
+  stateMutability: "nonpayable",
+  inputs: [],
+  outputs: [],
+},
+
 ] as const;
