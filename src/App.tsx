@@ -23,7 +23,7 @@ export default function App() {
         <div className="flex justify-center">
           <div className="relative pulse-glow">
             <img
-              src="/logo.svg"
+              src={Logo}
               alt="Sphygmos Network"
               className="h-14 w-auto relative z-10"
             />
