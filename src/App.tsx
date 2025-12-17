@@ -3,6 +3,8 @@ import { useController } from "./hooks/useController";
 import { Actions } from "./components/Actions";
 import Stats from "./components/Stats";
 import { fmt } from "./utils/format";
+import DripStats from "./components/DripStats";
+
 
 export default function App() {
   const {
@@ -46,6 +48,8 @@ export default function App() {
 
         {/* ───── User Stats ───── */}
         <Stats />
+
+        <DripStats />
 
         {/* ───── Actions ───── */}
         <Actions />
