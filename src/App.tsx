@@ -40,7 +40,7 @@ export default function App() {
           <Stat
             label="Total PU"
             value={totalPU.data}
-            decimals={0}
+            decimals={18}
           />
         </div>
 
