@@ -51,6 +51,14 @@ export function useController() {
     totalPU,
     userPU,
     stakedSMOS,
+    // expose refetchers
+    refetchAll: () => {
+      minersPool.refetch();
+      rewardPool.refetch();
+      totalPU.refetch();
+      userPU.refetch();
+      stakedSMOS.refetch();
+    },
     acquirePU,
     stakeSMOS,
     claimMiner,
