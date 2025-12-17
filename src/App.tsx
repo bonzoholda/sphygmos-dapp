@@ -19,7 +19,7 @@ export default function App() {
     
     <div className="min-h-screen bg-gray-50 p-6">
         <div className="flex justify-center mb-6">
-          <div className="pulse-glow">
+          <div className="logo">
             <img
               src={Logo}
               alt="Sphygmos Network"
@@ -32,10 +32,9 @@ export default function App() {
       <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6 space-y-6">
 
         {/* ───── Header ───── */}
-        <h1 className="text-2xl font-bold text-center">
-         
-          Sphygmos Network
-        </h1>
+        <h3 className="text-2xl font-italic text-center">   
+          The Heartbeat of Perpetual DeFi
+        </h3>
 
         {/* ───── Wallet ───── */}
         <div className="flex justify-center">
