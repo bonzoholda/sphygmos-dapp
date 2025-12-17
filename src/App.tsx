@@ -16,7 +16,7 @@ import { SwapTrading } from "./components/SwapTrading";
  */
 const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
 const MOCK_USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD" as `0x${string}`;
-const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb"; // Your SMOS Contract Address
+const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb" as `0x${string}`; // Your SMOS Contract Address
 
 export default function App() {
   const { minersPool, rewardPool, totalPU } = useController();
@@ -92,14 +92,15 @@ export default function App() {
                 spenderAddress={CONTROLLER_ADDRESS}
                 amountRequired="0.1" 
               >
-              {/* Nested Guard: First approve USDT, then approve SMOS */}
-              <TokenApprovalGuard
-                tokenAddress={SMOS_ADDRESS}
-                spenderAddress={CONTROLLER_ADDRESS}
-                amountRequired="0.1"
-              >
-                <Actions />
-              </TokenApprovalGuard>
+                {/* Nested Guard: First approve USDT, then approve SMOS */}
+                <TokenApprovalGuard
+                  tokenAddress={SMOS_ADDRESS}
+                  spenderAddress={CONTROLLER_ADDRESS}
+                  amountRequired="0.1"
+                >
+                  <Actions />
+                </TokenApprovalGuard>
+              </TokenApprovalGuard> 
             )}
           </div>
         ) : (
