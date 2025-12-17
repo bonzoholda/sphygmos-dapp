@@ -23,7 +23,7 @@ export default function App() {
             <img
               src={Logo}
               alt="Sphygmos Network"
-              className="relative z-10 w-full max-w-[150px] h-auto mx-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
+              className="relative z-10 w-full max-w-[300px] h-auto mx-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
             />
           </div>
         </div>   
