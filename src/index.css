@@ -148,3 +148,24 @@ button:disabled {
     linear-gradient(90deg, rgba(250, 204, 21, 0.04) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+/* ───── Themed Containers ───── */
+.panel {
+  @apply rounded-xl bg-black/70 border border-yellow-400/20 p-4;
+}
+
+.panel-title {
+  @apply text-xs uppercase tracking-wide text-yellow-400/70;
+}
+
+.panel-value {
+  @apply mt-1 text-lg font-semibold text-neon;
+}
+
+/* Wallet Button Override */
+.wallet-btn {
+  @apply bg-black border border-yellow-400 text-yellow-400
+         hover:bg-yellow-400 hover:text-black
+         transition;
+}
+   
