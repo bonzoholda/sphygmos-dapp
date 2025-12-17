@@ -97,22 +97,15 @@ export default function Stats() {
 
 /* ───────── UI ───────── */
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-900 p-4 border border-slate-800">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-white">
-        {value}
-      </p>
+    <div className="panel">
+      <p className="panel-title">{label}</p>
+      <p className="panel-value">{value}</p>
     </div>
   );
 }
+
 
 /* ───────── Helpers ───────── */
 
