@@ -6,6 +6,18 @@ import DripStats from "./components/DripStats";
 import { fmt } from "./utils/format";
 import Logo from "./assets/logo.svg";
 
+// 1. Import the new Guard component
+import { TokenApprovalGuard } from "./components/TokenApprovalGuard";
+
+/**
+ * CONFIGURATION
+ * Replace these with your actual deployed addresses or environment variables
+ */
+const CONTROLLER_ADDRESS = import.meta.env
+  .VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
+const MOCK_USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD" as `0x${string}`;
+
+
 export default function App() {
   const { minersPool, rewardPool, totalPU } = useController();
 
@@ -48,7 +60,14 @@ export default function App() {
         <DripStats />
 
         {/* ───── Actions ───── */}
-        <Actions />
+        {/* We wrap Actions so the user must approve before they can Spend/Deposit */}
+        <TokenApprovalGuard 
+          tokenAddress={MOCK_USDT_ADDRESS}
+          spenderAddress={CONTROLLER_ADDRESS}
+          amountRequired="1000000" // Requires 1M allowance for testing (adjust as needed)
+        >
+          <Actions />
+        </TokenApprovalGuard>
       </div>
     </div>
   );
