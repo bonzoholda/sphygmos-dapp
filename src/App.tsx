@@ -4,7 +4,7 @@ import { Actions } from "./components/Actions";
 import Stats from "./components/Stats";
 import { fmt } from "./utils/format";
 import DripStats from "./components/DripStats";
-import Logo from "./assets/logo.svg";
+import Logo from "./assets/logo.png";
 
 
 
@@ -23,7 +23,7 @@ export default function App() {
         <div className="flex justify-center">
           <div className="pulse-glow">
             <img
-              src="/logo.svg"
+              src={Logo}
               alt="Sphygmos Network"
               className="relative z-10 h-14 w-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
             />
