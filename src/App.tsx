@@ -23,7 +23,7 @@ export default function App() {
             <img
               src={Logo}
               alt="Sphygmos Network"
-              className="relative z-10 w-full max-w-[300px] h-auto mx-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
+              className="relative z-10 w-full max-w-[320px] h-auto mx-auto"
             />
           </div>
         </div>   
@@ -32,7 +32,7 @@ export default function App() {
       <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6 space-y-6">
 
         {/* ───── Header ───── */}
-        <h3 className="text-2xl font-italic text-center">   
+        <h3 className="text-1xl font-small text-center">   
           The Heartbeat of Perpetual DeFi
         </h3>
 
