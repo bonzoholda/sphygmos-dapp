@@ -25,9 +25,9 @@ export default function App() {
 
         {/* ───── Protocol Stats ───── */}
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <Stat label="Miners Pool" value={fmt(minersPool.data)} />
-          <Stat label="Reward Pool" value={fmt(rewardPool.data)} />
-          <Stat label="Total PU" value={fmt(totalPU.data)} />
+          <Stat label="Miners Pool" value={fmt({minersPool.data})} />
+          <Stat label="Reward Pool" value={fmt({rewardPool.data})} />
+          <Stat label="Total PU" value={fmt({totalPU.data})} />
         </div>
 
         {/* ───── User Stats ───── */}
