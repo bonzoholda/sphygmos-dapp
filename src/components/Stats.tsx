@@ -4,6 +4,7 @@ import { fmt } from "../utils/format";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 
 const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
+const LOCK_DURATION = 604800; // 7 days in seconds
 
 export default function Stats() {
   const { address } = useAccount();
@@ -44,22 +45,22 @@ export default function Stats() {
     return () => clearInterval(t);
   }, []);
 
-  // Calculation Fix:
-  const LOCK_DURATION = 604800; // 7 days
+  // ───────── Locked Timer Calculation ─────────
   const depositTs = lastDepositTime ? Number(lastDepositTime) : 0;
   const unlockTs = depositTs + LOCK_DURATION;
   const secondsLeft = unlockTs - now;
-
-  // IMPORTANT: Only consider it locked if depositTs > 0 and timer hasn't hit zero
   const isLocked = depositTs > 0 && secondsLeft > 0;
-  const hasStake = !!stakedSMOS && stakedSMOS > 0n;
+
+  const hasStake = stakedSMOS ? BigInt(stakedSMOS) > 0n : false;
 
   const handleUnstake = () => {
-    writeContract({
-      address: CONTROLLER_ADDRESS,
-      abi: SPHYGMOS_CONTROLLER_ABI,
-      functionName: "withdraw",
-    });
+    if (!isLocked && hasStake) {
+      writeContract({
+        address: CONTROLLER_ADDRESS,
+        abi: SPHYGMOS_CONTROLLER_ABI,
+        functionName: "withdraw",
+      });
+    }
   };
 
   return (
@@ -82,15 +83,17 @@ export default function Stats() {
           <div>
             <p className="panel-title">Staked Lock Status</p>
             <p className={`text-lg font-mono font-bold ${isLocked ? "text-yellow-400" : "text-green-400"}`}>
-              {hasStake 
-                ? (isLocked ? `Locked: ${formatTimer(secondsLeft)}` : "Unlocked & Ready") 
+              {hasStake
+                ? isLocked
+                  ? `Locked: ${formatTimer(secondsLeft)}`
+                  : "Unlocked & Ready"
                 : "No Stake found"}
             </p>
           </div>
           {isLocked && (
-             <span className="text-[10px] bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 px-2 py-1 rounded animate-pulse">
-               168H LOCK
-             </span>
+            <span className="text-[10px] bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 px-2 py-1 rounded animate-pulse">
+              168H LOCK
+            </span>
           )}
         </div>
 
@@ -115,5 +118,7 @@ function formatTimer(sec: number) {
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  return `${d.toString().padStart(2, '0')}d:${h.toString().padStart(2, '0')}h:${m.toString().padStart(2, '0')}m`;
+  return `${d.toString().padStart(2, "0")}d:${h.toString().padStart(2, "0")}h:${m
+    .toString()
+    .padStart(2, "0")}m`;
 }
