@@ -9,9 +9,10 @@ export default function App() {
       <h1 className="text-3xl font-bold">
         APP IS ALIVE
       </h1>
-    </div>
 
-    <Stats />
+          <Stats />
+      
+    </div>
 
     
   );
