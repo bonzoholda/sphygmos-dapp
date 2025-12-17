@@ -4,6 +4,8 @@ import { Actions } from "./components/Actions";
 import Stats from "./components/Stats";
 import { fmt } from "./utils/format";
 import DripStats from "./components/DripStats";
+import Logo from "./assets/logo.png";
+
 
 
 export default function App() {
@@ -18,9 +20,17 @@ export default function App() {
       <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6 space-y-6">
 
         {/* ───── Header ───── */}
-        <h1 className="text-2xl font-bold text-center">
-          Sphygmos Network
-        </h1>
+        <div className="flex flex-col items-center gap-2">
+          <img
+            src={Logo}
+            alt="Sphygmos Network"
+            className="h-14 w-auto drop-shadow-sm"
+          />
+          <h1 className="text-xl font-bold text-center">
+            Sphygmos Network
+          </h1>
+        </div>
+
 
         {/* ───── Wallet ───── */}
         <div className="flex justify-center">
