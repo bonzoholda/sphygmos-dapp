@@ -4,61 +4,86 @@ import { fmt } from "../utils/format";
 import { TxStatus } from "./TxStatus";
 import { useState } from "react";
 
-const controller = import.meta.env
-  .VITE_CONTROLLER_ADDRESS as `0x${string}`;
+const CONTROLLER_ADDRESS = import.meta.env
+  .VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
 
 export default function DripStats() {
   const { address } = useAccount();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
 
-  const { data: dripRate } = useReadContract({
-    address: controller,
+  /* ───── Read Drip Rate ───── */
+  const { data: dripRatePerSecond } = useReadContract({
+    address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "dripRatePerSecond",
+    query: {
+      enabled: !!CONTROLLER_ADDRESS,
+    },
   });
 
+  /* ───── Read Pending Drip ───── */
   const { data: pendingDrip } = useReadContract({
-    address: controller,
+    address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "pendingDripReward",
     args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && !!CONTROLLER_ADDRESS,
+    },
   });
 
   const claimDrip = useWriteContract();
 
-  if (!address) return null;
+  if (!address || !CONTROLLER_ADDRESS) return null;
 
+  /* ───── Derived Values ───── */
   const dripPerDay =
-    dripRate ? (dripRate * 86400n) : 0n;
+    dripRatePerSecond && dripRatePerSecond > 0n
+      ? dripRatePerSecond * 86400n
+      : 0n;
+
+  const canClaim =
+    pendingDrip !== undefined && pendingDrip > 0n;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-      <h3 className="font-semibold text-slate-800">
-        💧 Drip Rewards
-      </h3>
+    <div className="panel space-y-4">
+      <h3 className="panel-title">💧 Drip Rewards</h3>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <Stat label="Drip / Day" value={fmt(dripPerDay)} />
-        <Stat label="Your Pending Drip" value={fmt(pendingDrip)} />
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard
+          label="Drip / Day"
+          value={
+            dripPerDay > 0n
+              ? fmt(dripPerDay, 18, 4)
+              : "Waiting rebase…"
+          }
+        />
+
+        <StatCard
+          label="Your Pending Drip"
+          value={fmt(pendingDrip, 18, 4)}
+        />
       </div>
 
       <button
         className="btn btn-outline w-full"
-        disabled={!pendingDrip || pendingDrip === 0n}
+        disabled={!canClaim || claimDrip.isPending}
         onClick={async () => {
           try {
             const hash = await claimDrip.writeContractAsync({
-              address: controller,
+              address: CONTROLLER_ADDRESS,
               abi: SPHYGMOS_CONTROLLER_ABI,
               functionName: "claimDripRewards",
             });
             setClaimTx(hash);
           } catch (err) {
-            console.error("Claim drip failed", err);
+            console.error("Claim drip failed:", err);
           }
         }}
       >
-        Claim Drip Rewards
+        {claimDrip.isPending
+          ? "Claiming…"
+          : "Claim Drip Rewards"}
       </button>
 
       <TxStatus hash={claimTx} />
@@ -68,21 +93,17 @@ export default function DripStats() {
 
 /* ───────────────────────── */
 
-function Stat({
+function StatCard({
   label,
   value,
 }: {
   label: string;
-  value?: string;
+  value: string;
 }) {
   return (
-    <div className="rounded bg-white p-3 text-center">
-      <div className="text-xs text-slate-500">
-        {label}
-      </div>
-      <div className="font-semibold text-slate-900">
-        {value ?? "—"}
-      </div>
+    <div className="panel">
+      <p className="panel-title">{label}</p>
+      <p className="panel-value">{value}</p>
     </div>
   );
 }
