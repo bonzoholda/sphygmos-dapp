@@ -99,7 +99,7 @@ export default function Stats() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="panel">
+    <div className="glass-card p-4 space-y-3">
       <p className="panel-title">{label}</p>
       <p className="panel-value">{value}</p>
     </div>
