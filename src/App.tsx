@@ -23,7 +23,7 @@ export default function App() {
       </div>
 
       {/* ───── Main Card ───── */}
-      <div className="card max-w-md mx-auto p-6 space-y-6">
+      <div className="max-w-md mx-auto glass-card p-6 space-y-6">
         {/* Tagline */}
         <h3 className="text-center text-sm text-slate-400">
           The Heartbeat of Perpetual DeFi
