@@ -4,7 +4,7 @@ import { fmt } from "../utils/format";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 
 const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
-const LOCK_DURATION = 604800; // 7 days in seconds
+const LOCK_DURATION = 604800n; // 7 days in seconds as BigInt
 
 export default function Stats() {
   const { address } = useAccount();
@@ -39,17 +39,17 @@ export default function Stats() {
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
-  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [now, setNow] = useState(BigInt(Math.floor(Date.now() / 1000)));
   useEffect(() => {
-    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    const t = setInterval(() => setNow(BigInt(Math.floor(Date.now() / 1000))), 1000);
     return () => clearInterval(t);
   }, []);
 
   // ───────── Locked Timer Calculation ─────────
-  const depositTs = lastDepositTime ? Number(lastDepositTime) : 0;
+  const depositTs = lastDepositTime ? BigInt(lastDepositTime.toString()) : 0n;
   const unlockTs = depositTs + LOCK_DURATION;
-  const secondsLeft = unlockTs - now;
-  const isLocked = depositTs > 0 && secondsLeft > 0;
+  const secondsLeft = unlockTs > now ? unlockTs - now : 0n;
+  const isLocked = depositTs > 0n && secondsLeft > 0n;
 
   const hasStake = stakedSMOS ? BigInt(stakedSMOS) > 0n : false;
 
@@ -85,7 +85,7 @@ export default function Stats() {
             <p className={`text-lg font-mono font-bold ${isLocked ? "text-yellow-400" : "text-green-400"}`}>
               {hasStake
                 ? isLocked
-                  ? `Locked: ${formatTimer(secondsLeft)}`
+                  ? `Locked: ${formatTimer(Number(secondsLeft))}`
                   : "Unlocked & Ready"
                 : "No Stake found"}
             </p>
