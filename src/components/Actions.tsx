@@ -1,5 +1,6 @@
 import { parseUnits, formatUnits } from "viem";
 import { useAccount, useBalance } from "wagmi";
+import { useWaitForTransactionReceipt } from "wagmi";
 import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 import { useState } from "react";
@@ -9,7 +10,7 @@ const controller = import.meta.env.VITE_CONTROLLER_ADDRESS;
 
 export function Actions() {
   const { address } = useAccount();
-  const { acquirePU, stakeSMOS, claimMiner } = useController();
+  const { acquirePU, stakeSMOS, claimMiner, refetchAll } = useController();
 
   const [puAmount, setPuAmount] = useState("");
   const [stakeAmount, setStakeAmount] = useState("");
@@ -17,6 +18,44 @@ export function Actions() {
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
 
+  /* ─────────────────────────────────────
+     SAFE TX WATCHERS (AUTO-REFRESH)
+     ───────────────────────────────────── */
+
+  useWaitForTransactionReceipt({
+    hash: puTx,
+    confirmations: 1,
+    query: { enabled: !!puTx },
+    onSuccess() {
+      refetchAll();
+      setPuAmount("");
+      setPuTx(undefined);
+    },
+  });
+
+  useWaitForTransactionReceipt({
+    hash: stakeTx,
+    confirmations: 1,
+    query: { enabled: !!stakeTx },
+    onSuccess() {
+      refetchAll();
+      setStakeAmount("");
+      setStakeTx(undefined);
+    },
+  });
+
+  useWaitForTransactionReceipt({
+    hash: claimTx,
+    confirmations: 1,
+    query: { enabled: !!claimTx },
+    onSuccess() {
+      refetchAll();
+      setClaimTx(undefined);
+    },
+  });
+
+  /* ───────────────────────────────────── */
+  
   if (!address || !controller) return null;
 
   return (
