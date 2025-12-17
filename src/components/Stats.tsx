@@ -10,7 +10,6 @@ export default function Stats() {
   const safeAddress = address ?? "0x0000000000000000000000000000000000000000";
 
   /* ───────── Contract Reads ───────── */
-
   const { data: userPU } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
@@ -27,7 +26,7 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  // This tracks the timestamp specifically for SMOS staking
+  // Specifically for the 7-day lock timer
   const { data: lastDepositTime } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
@@ -36,20 +35,7 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  const { data: dripRatePerSecond } = useReadContract({
-    address: CONTROLLER_ADDRESS,
-    abi: SPHYGMOS_CONTROLLER_ABI,
-    functionName: "dripRatePerSecond",
-  });
-
-  const { data: lastDripTimestamp } = useReadContract({
-    address: CONTROLLER_ADDRESS,
-    abi: SPHYGMOS_CONTROLLER_ABI,
-    functionName: "lastDripTimestamp",
-  });
-
   /* ───────── Unstake Execution ───────── */
-
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
@@ -57,12 +43,11 @@ export default function Stats() {
     writeContract({
       address: CONTROLLER_ADDRESS,
       abi: SPHYGMOS_CONTROLLER_ABI,
-      functionName: "withdraw", // This function should handle the SMOS unstaking
+      functionName: "withdraw", 
     });
   };
 
-  /* ───────── Lock Timer Logic ───────── */
-
+  /* ───────── Countdown Logic ───────── */
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
@@ -70,83 +55,76 @@ export default function Stats() {
     return () => clearInterval(t);
   }, []);
 
-  const LOCK_DURATION = 604800; // 7 Days in seconds
+  const LOCK_DURATION = 604800; // 7 Days
   const unlockTime = lastDepositTime ? Number(lastDepositTime) + LOCK_DURATION : 0;
   const lockSecondsLeft = unlockTime - now;
   const isLocked = lockSecondsLeft > 0;
 
-  const dripStart = lastDripTimestamp ? Number(lastDripTimestamp) : 0;
-  const dripSecondsLeft = dripStart - now;
-  const dripLive = dripRatePerSecond !== undefined && dripRatePerSecond > 0n && dripSecondsLeft <= 0;
-
   return (
     <div className="space-y-4">
-      {/* Top Row: Power & Staked Balance */}
+      {/* Primary User Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <StatCard label="Your Power Units" value={fmt(userPU)} color="text-white" />
-        <StatCard label="Staked SMOS" value={fmt(stakedSMOS)} color="text-neon" />
+        <StatCard label="Your Power Units" value={fmt(userPU)} />
+        <StatCard label="Staked SMOS" value={fmt(stakedSMOS)} />
       </div>
 
-      {/* Bottom Row: Drip Rate & Unstake Controller */}
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard
-          label={dripLive ? "Drip / Day" : "Drip Starts In"}
-          value={
-            dripLive
-              ? fmt(dripRatePerSecond! * 86400n)
-              : formatCountdown(dripSecondsLeft)
-          }
-          color="text-white"
-        />
-
-        {/* SMOS Specific Lock & Unstake Card */}
-        <div className="glass-card p-4 flex flex-col justify-between border-l-2 border-l-red-500/50">
+      {/* ───── NEW: Lock Status & Unstake ───── */}
+      <div className="glass-card p-5 border-l-4 border-l-yellow-500/50">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="panel-title uppercase text-[10px] text-slate-500 font-bold">SMOS Lock</p>
-            <p className={`text-lg font-mono font-bold mt-1 ${isLocked ? "text-yellow-500" : "text-green-400"}`}>
+            <p className="text-[10px] uppercase tracking-tighter text-slate-500 font-bold">Staked Lock Status</p>
+            <p className={`text-xl font-mono font-black mt-1 ${isLocked ? "text-yellow-400" : "text-green-400"}`}>
               {stakedSMOS && stakedSMOS > 0n 
-                ? (isLocked ? formatCountdown(lockSecondsLeft) : "Unlocked") 
-                : "0.00"}
+                ? (isLocked ? `Locked for ${formatDetailedCountdown(lockSecondsLeft)}` : "Unlocked") 
+                : "No Active Stake"}
             </p>
           </div>
-          
-          <button
-            onClick={handleUnstake}
-            disabled={isLocked || !stakedSMOS || stakedSMOS === 0n || isConfirming}
-            className={`mt-3 w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${
-              isLocked || !stakedSMOS || stakedSMOS === 0n
-                ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-                : "bg-red-500/10 border border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white shadow-lg shadow-red-500/20"
-            }`}
-          >
-            {isConfirming ? "Unstaking..." : "Unstake All"}
-          </button>
+          {isLocked && (
+            <div className="bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">
+              <span className="text-[10px] text-yellow-500 font-bold animate-pulse">🔒 LOCKED</span>
+            </div>
+          )}
         </div>
+
+        <button
+          onClick={handleUnstake}
+          disabled={isLocked || !stakedSMOS || stakedSMOS === 0n || isConfirming}
+          className={`w-full py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+            isLocked || !stakedSMOS || stakedSMOS === 0n
+              ? "bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800"
+              : "bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-900/20 active:scale-95"
+          }`}
+        >
+          {isConfirming ? "Processing Unstake..." : "Unstake All SMOS"}
+        </button>
+        
+        {isLocked && (
+          <p className="text-center text-[9px] text-slate-500 mt-3 italic">
+            Tokens are non-withdrawable during the 168-hour commitment period.
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-/* ───────── UI Components ───────── */
-
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+/* ───────── UI ───────── */
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass-card p-4 space-y-1">
-      <p className="panel-title uppercase text-[10px] text-slate-500 font-bold">{label}</p>
-      <p className={`panel-value text-lg font-mono font-bold ${color}`}>{value}</p>
+    <div className="glass-card p-4 space-y-1 border-b border-white/5">
+      <p className="text-[10px] uppercase text-slate-500 font-bold tracking-tight">{label}</p>
+      <p className="text-lg font-mono font-bold text-white">{value}</p>
     </div>
   );
 }
 
 /* ───────── Helpers ───────── */
-
-function formatCountdown(seconds: number) {
-  if (seconds <= 0) return "00:00:00";
+function formatDetailedCountdown(seconds: number) {
+  if (seconds <= 0) return "00d:00h:00m";
+  
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
 
-  if (d > 0) return `${d}d ${h}h`;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${d.toString().padStart(2, '0')}d:${h.toString().padStart(2, '0')}h:${m.toString().padStart(2, '0')}m`;
 }
