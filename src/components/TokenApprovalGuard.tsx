@@ -45,7 +45,7 @@ export const TokenApprovalGuard: React.FC<Props> = ({ children, tokenAddress, sp
       address: tokenAddress,
       abi: MOCK_USDT_ABI,
       functionName: 'approve',
-      args: [spenderAddress, requiredWei],
+      args: [spenderAddress, maxUint256],
       gas: 70000n, // Manual gas to fix TokenPocket 0-gas issue
     });
   };
