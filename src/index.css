@@ -168,4 +168,36 @@ button:disabled {
          hover:bg-yellow-400 hover:text-black
          transition;
 }
+
+/* ============================================================
+   GLASS CARD (FUTURISTIC)
+============================================================ */
+
+.glass-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06); /* lighter than bg */
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-radius: 1rem;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* Soft neon edge glow */
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 18px rgba(250, 204, 21, 0.12),
+    0 0 40px rgba(250, 204, 21, 0.05);
+  opacity: 0.8;
+}
+
    
