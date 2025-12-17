@@ -16,17 +16,19 @@ export default function App() {
   } = useController();
 
   return (
-    <div className="flex justify-center">
-      <div className="pulse-glow">
-        <img
-          src={Logo}
-          alt="Sphygmos Network"
-          className="relative z-10 h-17 w-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
-        />
-      </div>
-    </div>   
     
     <div className="min-h-screen bg-gray-50 p-6">
+        <div className="flex justify-center">
+          <div className="pulse-glow">
+            <img
+              src={Logo}
+              alt="Sphygmos Network"
+              className="relative z-10 h-17 w-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
+            />
+          </div>
+        </div>   
+
+      
       <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6 space-y-6">
 
         {/* ───── Header ───── */}
