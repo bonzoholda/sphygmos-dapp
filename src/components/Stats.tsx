@@ -39,19 +39,34 @@ export default function Stats() {
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
-  const [now, setNow] = useState(BigInt(Math.floor(Date.now() / 1000)));
+  // ───────── Refactored Timer Logic ─────────
+  const [secondsLeft, setSecondsLeft] = useState<number>(0);
+
   useEffect(() => {
-    const t = setInterval(() => setNow(BigInt(Math.floor(Date.now() / 1000))), 1000);
-    return () => clearInterval(t);
-  }, []);
+    if (!lastDepositTime || !stakedSMOS) {
+      setSecondsLeft(0);
+      return;
+    }
 
-  // ───────── Locked Timer Calculation ─────────
-  const depositTs = lastDepositTime ? BigInt(lastDepositTime.toString()) : 0n;
-  const unlockTs = depositTs + LOCK_DURATION;
-  const secondsLeft = unlockTs > now ? unlockTs - now : 0n;
-  const isLocked = depositTs > 0n && secondsLeft > 0n;
+    // Safe BigInt conversion for lastDepositTime
+    const depositTs =
+      typeof lastDepositTime === "object" && lastDepositTime !== null && "toBigInt" in lastDepositTime
+        ? (lastDepositTime as any).toBigInt()
+        : BigInt(lastDepositTime.toString());
 
-  const hasStake = stakedSMOS ? BigInt(stakedSMOS) > 0n : false;
+    const unlockTs = depositTs + LOCK_DURATION;
+
+    const interval = setInterval(() => {
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const remaining = unlockTs > now ? unlockTs - now : 0n;
+      setSecondsLeft(Number(remaining));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastDepositTime, stakedSMOS]);
+
+  const hasStake = stakedSMOS ? BigInt(stakedSMOS.toString()) > 0n : false;
+  const isLocked = hasStake && secondsLeft > 0;
 
   const handleUnstake = () => {
     if (!isLocked && hasStake) {
@@ -85,7 +100,7 @@ export default function Stats() {
             <p className={`text-lg font-mono font-bold ${isLocked ? "text-yellow-400" : "text-green-400"}`}>
               {hasStake
                 ? isLocked
-                  ? `Locked: ${formatTimer(Number(secondsLeft))}`
+                  ? `Locked: ${formatTimer(secondsLeft)}`
                   : "Unlocked & Ready"
                 : "No Stake found"}
             </p>
