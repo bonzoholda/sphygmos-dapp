@@ -10,6 +10,6 @@ export const wagmiConfig = createConfig({
   ],
   transports: {
     // 2. Use a high-performance public mirror for better stability
-    [bscTestnet.id]: http("https://bsc-testnet.public.blastapi.io"),
+    [bscTestnet.id]: http(),
   },
 });
