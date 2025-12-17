@@ -10,5 +10,9 @@ export default function App() {
         APP IS ALIVE
       </h1>
     </div>
+
+    <Stats />
+
+    
   );
 }
