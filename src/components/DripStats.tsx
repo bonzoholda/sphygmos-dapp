@@ -46,7 +46,7 @@ export default function DripStats() {
     pendingDrip !== undefined && pendingDrip > 0n;
 
   return (
-    <div className="panel space-y-4">
+    <div className="glass-card p-4 space-y-3">
       <h3 className="panel-title">💧 Dripped SMOS Rewards</h3>
 
       <div className="grid grid-cols-2 gap-4">
