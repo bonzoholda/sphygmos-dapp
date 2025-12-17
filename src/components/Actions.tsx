@@ -3,9 +3,15 @@ import { useAccount, useBalance } from "wagmi";
 import { useState } from "react";
 import { TxStatus } from "./TxStatus";
 import { useController } from "../hooks/useController";
+import { useWriteContract } from "wagmi";
+import ERC20_ABI from "../abi/ERC20";
+
 
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS as `0x${string}`;
 const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}`;
+const approveUSDT = useWriteContract();
+const approveSMOS = useWriteContract();
+
 
 export function Actions() {
   const { address, isConnected } = useAccount();
@@ -78,6 +84,24 @@ export function Actions() {
         </div>
 
         <button
+          className="btn btn-outline w-full"
+          onClick={async () => {
+            try {
+              await approveUSDT.writeContractAsync({
+                address: USDT_ADDRESS,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [controller, parseUnits("1000000", 6)], // large allowance
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+        >
+          Approve USDT
+        </button>
+
+        <button
           className="btn w-full"
           disabled={
             acquirePU.isPending ||
@@ -125,6 +149,25 @@ export function Actions() {
           </button>
         </div>
 
+        <button
+          className="btn btn-outline w-full"
+          onClick={async () => {
+            try {
+              await approveSMOS.writeContractAsync({
+                address: SMOS_ADDRESS,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [controller, parseUnits("1000000", 18)],
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+        >
+          Approve SMOS
+        </button>
+
+        
         <button
           className="btn w-full"
           disabled={
