@@ -46,7 +46,7 @@ export const TokenApprovalGuard: React.FC<Props> = ({ children, tokenAddress, sp
       abi: MOCK_USDT_ABI,
       functionName: 'approve',
       args: [spenderAddress, maxUint256],
-      gas: 70000n, // Manual gas to fix TokenPocket 0-gas issue
+      gas: 80000n, // Manual gas to fix TokenPocket 0-gas issue
     });
   };
 
@@ -64,36 +64,38 @@ export const TokenApprovalGuard: React.FC<Props> = ({ children, tokenAddress, sp
 
   // If allowance exists but is lower than needed
   // We show a choice: Reset to 0 (for USDT safety) or Approve new amount
-  if (allowance !== undefined && allowance < requiredWei && allowance > 0n) {
+  if (allowance !== undefined && allowance > 0n && allowance < requiredWei) {
     return (
-      <div style={containerStyle}>
-        <h3>Update Permission</h3>
-        <p>Current allowance is insufficient ({allowance.toString()}).</p>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-          <button onClick={handleReset} disabled={isPending || isConfirming} style={buttonStyle}>
-            {isPending ? 'Resetting...' : 'Reset to 0'}
-          </button>
-          <button onClick={handleApprove} disabled={isPending || isConfirming} style={buttonStyle}>
-            Set to {amountRequired}
+          <div className="glass-card p-6 text-center space-y-4">
+            <h3 className="text-red-400 font-bold">Inconsistent Allowance</h3>
+            <p className="text-xs text-slate-400">USDT requires a reset to 0 before changing limits.</p>
+            <button 
+              onClick={handleReset} 
+              disabled={isPending || isConfirming}
+              className="w-full py-3 bg-red-500/20 text-red-400 border border-red-500/50 rounded-lg font-bold"
+            >
+              {isPending || isConfirming ? "Processing Reset..." : "1. Reset to 0"}
+            </button>
+          </div>
+        );
+      }
+
+    // CASE 2: Allowance is 0 (Ready to set Unlimited)
+    if (allowance !== undefined && allowance === 0n) {
+      return (
+        <div className="glass-card p-6 text-center space-y-4">
+          <h3 className="text-yellow-400 font-bold uppercase">Enable Trading</h3>
+          <p className="text-xs text-slate-400">Click below to authorize the Sphygmos Controller.</p>
+          <button 
+            onClick={handleApprove} 
+            disabled={isPending || isConfirming}
+            className="w-full py-3 bg-yellow-400 text-black rounded-lg font-black shadow-lg"
+          >
+            {isPending || isConfirming ? "Confirming on Chain..." : "2. Enable Unlimited Spend"}
           </button>
         </div>
-        <p style={{ fontSize: '12px', marginTop: '10px' }}>Recommended for mobile wallet stability.</p>
-      </div>
-    );
-  }
-
-  // If allowance is exactly 0
-  if (allowance !== undefined && allowance === 0n) {
-    return (
-      <div style={containerStyle}>
-        <h3>Enable Spending</h3>
-        <p>Approve the Sphygmos Controller to use your tokens.</p>
-        <button onClick={handleApprove} disabled={isPending || isConfirming} style={buttonStyle}>
-          {isPending || isConfirming ? 'Processing...' : 'Approve USDT'}
-        </button>
-      </div>
-    );
-  }
+      );
+    }
 
   return <>{children}</>;
 };
