@@ -21,15 +21,14 @@ export default function App() {
 
         {/* ───── Header ───── */}
         <div className="flex justify-center">
-          <div className="relative pulse-glow">
+          <div className="pulse-glow">
             <img
-              src={Logo}
+              src="/logo.svg"
               alt="Sphygmos Network"
-              className="h-14 w-auto relative z-10"
+              className="relative z-10 h-14 w-auto"
             />
           </div>
-        </div>
-        
+        </div>   
 
         {/* ───── Wallet ───── */}
         <div className="flex justify-center">
