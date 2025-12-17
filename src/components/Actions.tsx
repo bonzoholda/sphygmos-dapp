@@ -1,141 +1,175 @@
 import { parseUnits } from "viem";
-import { useAccount } from "wagmi";
-import { useBalance } from "wagmi";
-import { useController } from "../hooks/useController";
-import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
+import { useAccount, useBalance } from "wagmi";
 import { useState } from "react";
 import { TxStatus } from "./TxStatus";
+import { useController } from "../hooks/useController";
 
-
-const controller = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
+const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS as `0x${string}`;
+const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}`;
 
 export function Actions() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+
   const {
     acquirePU,
     stakeSMOS,
     claimMiner,
   } = useController();
+
+  const [puAmount, setPuAmount] = useState("");
+  const [stakeAmount, setStakeAmount] = useState("");
+
   const [puTx, setPuTx] = useState<`0x${string}`>();
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
-  const [puAmount, setPuAmount] = useState("");
-  const [stakeAmount, setStakeAmount] = useState("");
 
   const { data: usdtBal } = useBalance({
     address,
     token: USDT_ADDRESS,
+    query: { enabled: isConnected },
   });
-  
+
   const { data: smosBal } = useBalance({
     address,
     token: SMOS_ADDRESS,
+    query: { enabled: isConnected },
   });
 
+  if (!isConnected) return null;
 
-  if (!address) return null;
+  /* ───────────────────────────── */
+  /* Helpers */
+  /* ───────────────────────────── */
+
+  function safeParse(value: string) {
+    if (!value || Number(value) <= 0) return null;
+    try {
+      return parseUnits(value, 18);
+    } catch {
+      return null;
+    }
+  }
+
+  /* ───────────────────────────── */
+  /* UI */
+  /* ───────────────────────────── */
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
 
+      {/* ───────── Acquire PU ───────── */}
       <div className="space-y-2">
         <div className="flex gap-2">
           <input
             type="number"
-            placeholder="Amount"
+            inputMode="decimal"
+            placeholder="USDT amount"
             value={puAmount}
             onChange={(e) => setPuAmount(e.target.value)}
             className="input w-full"
           />
-      
+
           <button
             className="btn btn-outline"
-            onClick={() =>
-              setPuAmount(usdtBal ? usdtBal.formatted : "")
-            }
+            onClick={() => setPuAmount(usdtBal?.formatted ?? "")}
           >
             MAX
           </button>
         </div>
-      
+
         <button
           className="btn w-full"
-          disabled={acquirePU.isPending || !puAmount}
+          disabled={
+            acquirePU.isPending ||
+            !safeParse(puAmount)
+          }
           onClick={async () => {
-            const hash = await acquirePU.writeContractAsync({
-              address: controller,
-              abi: SPHYGMOS_CONTROLLER_ABI,
-              functionName: "depositPush",
-              args: [parseUnits(puAmount, 18)],
-            });
-            setPuTx(hash);
+            const parsed = safeParse(puAmount);
+            if (!parsed) return;
+
+            try {
+              const hash = await acquirePU.writeContractAsync({
+                args: [parsed],
+              });
+              setPuTx(hash);
+            } catch (e) {
+              console.error(e);
+            }
           }}
         >
-          {acquirePU.isPending ? "Processing…" : "Acquire Power Units"}
+          {acquirePU.isPending
+            ? "Processing…"
+            : "Acquire Power Units"}
         </button>
-      
+
         <TxStatus hash={puTx} />
       </div>
 
-
+      {/* ───────── Stake SMOS ───────── */}
       <div className="space-y-2">
         <div className="flex gap-2">
           <input
             type="number"
-            placeholder="Stake amount"
+            inputMode="decimal"
+            placeholder="SMOS amount"
             value={stakeAmount}
             onChange={(e) => setStakeAmount(e.target.value)}
             className="input w-full"
           />
-      
+
           <button
             className="btn btn-outline"
-            onClick={() =>
-              setStakeAmount(smosBal ? smosBal.formatted : "")
-            }
+            onClick={() => setStakeAmount(smosBal?.formatted ?? "")}
           >
             MAX
           </button>
         </div>
-      
+
         <button
           className="btn w-full"
-          disabled={stakeSMOS.isPending || !stakeAmount}
+          disabled={
+            stakeSMOS.isPending ||
+            !safeParse(stakeAmount)
+          }
           onClick={async () => {
-            const hash = await stakeSMOS.writeContractAsync({
-              address: controller,
-              abi: SPHYGMOS_CONTROLLER_ABI,
-              functionName: "stake",
-              args: [parseUnits(stakeAmount, 18)],
-            });
-            setStakeTx(hash);
+            const parsed = safeParse(stakeAmount);
+            if (!parsed) return;
+
+            try {
+              const hash = await stakeSMOS.writeContractAsync({
+                args: [parsed],
+              });
+              setStakeTx(hash);
+            } catch (e) {
+              console.error(e);
+            }
           }}
         >
           {stakeSMOS.isPending ? "Staking…" : "Stake SMOS"}
         </button>
-      
+
         <TxStatus hash={stakeTx} />
       </div>
 
-
+      {/* ───────── Claim ───────── */}
       <button
-        className="btn btn-outline"
+        className="btn btn-outline w-full"
         disabled={claimMiner.isPending}
         onClick={async () => {
-          const hash = await claimMiner.writeContractAsync({
-            address: controller,
-            abi: SPHYGMOS_CONTROLLER_ABI,
-            functionName: "claimMinerRewards",
-          });
-          setClaimTx(hash);
+          try {
+            const hash = await claimMiner.writeContractAsync();
+            setClaimTx(hash);
+          } catch (e) {
+            console.error(e);
+          }
         }}
       >
-        {claimMiner.isPending ? "Claiming…" : "Claim Mining Rewards"}
+        {claimMiner.isPending
+          ? "Claiming…"
+          : "Claim Mining Rewards"}
       </button>
-      
+
       <TxStatus hash={claimTx} />
-
-
     </div>
   );
 }
