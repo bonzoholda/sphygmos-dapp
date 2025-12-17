@@ -2,29 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===============================
+   GLOBAL THEME
+================================ */
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: #000;
+  color: #e5e7eb; /* slate-200 */
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ===============================
+   BUTTONS
+================================ */
+
 .btn {
-  @apply w-full bg-black text-white py-3 rounded-lg font-semibold active:scale-95 transition;
+  @apply w-full py-3 rounded-xl font-semibold transition-all duration-200;
+  background: linear-gradient(180deg, #0a0a0a, #000);
+  color: #facc15; /* yellow-400 */
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  box-shadow:
+    0 0 12px rgba(250, 204, 21, 0.15),
+    inset 0 0 8px rgba(250, 204, 21, 0.08);
+}
+
+.btn:hover {
+  box-shadow:
+    0 0 18px rgba(250, 204, 21, 0.35),
+    inset 0 0 12px rgba(250, 204, 21, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-outline {
-  @apply bg-white text-black border border-black;
+  background: transparent;
+  color: #facc15;
+  border: 1px solid rgba(250, 204, 21, 0.6);
 }
 
 button:disabled {
-  @apply opacity-60 cursor-not-allowed;
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
-/* ───────── GLOW ───────── */
+/* ===============================
+   INPUTS
+================================ */
 
-.pulse-glow {
-  position: relative;
+.input {
+  @apply w-full rounded-xl px-4 py-3 outline-none transition;
+  background: rgba(10, 10, 10, 0.85);
+  color: #f9fafb;
+  border: 1px solid rgba(250, 204, 21, 0.25);
 }
+
+.input::placeholder {
+  color: rgba(250, 204, 21, 0.35);
+}
+
+.input:focus {
+  border-color: #facc15;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
+}
+
+/* ===============================
+   CARDS / PANELS
+================================ */
+
+.card {
+  background: linear-gradient(
+    180deg,
+    rgba(15, 15, 15, 0.9),
+    rgba(5, 5, 5, 0.9)
+  );
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  border-radius: 1rem;
+  box-shadow:
+    0 0 24px rgba(250, 204, 21, 0.12),
+    inset 0 0 12px rgba(250, 204, 21, 0.06);
+}
+
+/* ===============================
+   NEON PULSE GLOW (LOGO / HIGHLIGHTS)
+================================ */
 
 @keyframes glowPulse {
   0% {
@@ -32,8 +98,8 @@ button:disabled {
     opacity: 0.35;
   }
   50% {
-    transform: scale(1.15);
-    opacity: 0.6;
+    transform: scale(1.12);
+    opacity: 0.65;
   }
   100% {
     transform: scale(1);
@@ -41,19 +107,44 @@ button:disabled {
   }
 }
 
+.pulse-glow {
+  position: relative;
+}
+
 .pulse-glow::before {
   content: "";
   position: absolute;
-  inset: -12px;
+  inset: -16px;
   border-radius: 9999px;
   background: radial-gradient(
     circle,
-    rgba(56, 189, 248, 0.6) 0%,
-    rgba(56, 189, 248, 0.15) 40%,
+    rgba(250, 204, 21, 0.7) 0%,
+    rgba(250, 204, 21, 0.25) 35%,
     transparent 70%
   );
-  animation: glowPulse 3s ease-in-out infinite;
   filter: blur(14px);
+  animation: glowPulse 3s ease-in-out infinite;
   z-index: 0;
-  pointer-events: none;
+}
+
+/* ===============================
+   TEXT GLOW (HEADERS / KEY STATS)
+================================ */
+
+.text-neon {
+  color: #facc15;
+  text-shadow:
+    0 0 8px rgba(250, 204, 21, 0.6),
+    0 0 18px rgba(250, 204, 21, 0.35);
+}
+
+/* ===============================
+   SUBTLE GRID BACKGROUND (OPTIONAL)
+================================ */
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(250, 204, 21, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(250, 204, 21, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
