@@ -4,7 +4,7 @@ import { Actions } from "./components/Actions";
 import Stats from "./components/Stats";
 import DripStats from "./components/DripStats";
 import { fmt } from "./utils/format";
-import Logo from "./assets/logo.png";
+import Logo from "./assets/logo.svg";
 
 export default function App() {
   const { minersPool, rewardPool, totalPU } = useController();
