@@ -18,12 +18,12 @@ export default function App() {
   return (
     
     <div className="min-h-screen bg-gray-50 p-6">
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-6">
           <div className="pulse-glow">
             <img
               src={Logo}
               alt="Sphygmos Network"
-              className="relative z-10 h-17 w-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
+              className="relative z-10 w-full max-w-[250px] h-auto mx-auto drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]"
             />
           </div>
         </div>   
