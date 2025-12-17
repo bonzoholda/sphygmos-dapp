@@ -6,6 +6,7 @@ body {
   margin: 0;
   font-family: system-ui, sans-serif;
 }
+
 .btn {
   @apply w-full bg-black text-white py-3 rounded-lg font-semibold active:scale-95 transition;
 }
@@ -16,6 +17,12 @@ body {
 
 button:disabled {
   @apply opacity-60 cursor-not-allowed;
+}
+
+/* ───────── GLOW ───────── */
+
+.pulse-glow {
+  position: relative;
 }
 
 @keyframes glowPulse {
@@ -45,6 +52,7 @@ button:disabled {
     transparent 70%
   );
   animation: glowPulse 3s ease-in-out infinite;
+  filter: blur(14px);
   z-index: 0;
-  filter: blur(12px);
+  pointer-events: none;
 }
