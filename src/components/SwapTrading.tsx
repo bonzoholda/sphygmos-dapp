@@ -4,7 +4,7 @@ import { parseUnits, formatUnits } from "viem";
 import { TokenApprovalGuard } from "./TokenApprovalGuard";
 
 // BSC Testnet Pancake Router (Commonly used: 0x9Ac64Cc6e4415144C455bd8E4837fea55603e5c3)
-const ROUTER_ADDRESS = "0x9Ac64Cc6e4415144C455bd8E4837fea55603e5c3"; 
+const ROUTER_ADDRESS = "0x6725F303b657a9451d8BA641348b6761A6CC7a17"; 
 const USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD";
 const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb"; // Replace with real address
 
