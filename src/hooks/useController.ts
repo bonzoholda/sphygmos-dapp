@@ -10,27 +10,23 @@ export function useController() {
   const acquirePU = useWriteContract();
   const stakeSMOS = useWriteContract();
   const claimMiner = useWriteContract();
-  const { refreshKey } = useRefresh();
 
   const minersPool = useReadContract({
     address: controllerAddress,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "minersPoolBalance",
-    scopeKey: `minersPool-${refreshKey}`,
   });
 
   const rewardPool = useReadContract({
     address: controllerAddress,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "rewardPoolBalance",
-    scopeKey: `rewardPool-${refreshKey}`,
   });
 
   const totalPU = useReadContract({
     address: controllerAddress,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "totalPU",
-    scopeKey: `totalPU-${refreshKey}`,
   });
 
   const userPU = useReadContract({
