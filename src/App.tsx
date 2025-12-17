@@ -5,15 +5,10 @@ import Stats from "./components/Stats";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-red-100 flex items-center justify-center">
-      <h1 className="text-3xl font-bold">
-        APP IS ALIVE
-      </h1>
-
-          <Stats />
-      
+    <div className="min-h-screen bg-gray-100 p-6 space-y-4">
+      <h1 className="text-xl font-bold">App Alive</h1>
+      <ConnectWallet />
+      <Stats />
     </div>
-
-    
   );
 }
