@@ -11,7 +11,7 @@ export const PANCAKE_ROUTER_ABI = [
     "stateMutability": "view",
     "type": "function"
   },
-  {
+{
     "inputs": [
       {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
       {"internalType": "uint256", "name": "amountOutMin", "type": "uint256"},
@@ -19,8 +19,8 @@ export const PANCAKE_ROUTER_ABI = [
       {"internalType": "address", "name": "to", "type": "address"},
       {"internalType": "uint256", "name": "deadline", "type": "uint256"}
     ],
-    "name": "swapExactTokensForTokens",
-    "outputs": [{"internalType": "uint256[]", "name": "amounts", "type": "uint256[]"}],
+    "name": "swapExactTokensForTokensSupportingFeeOnTransferTokens", // MANDATORY FOR TAXED TOKENS
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   }
