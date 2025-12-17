@@ -20,17 +20,16 @@ export default function App() {
       <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6 space-y-6">
 
         {/* ───── Header ───── */}
-        <div className="flex flex-col items-center gap-2">
-          <img
-            src={Logo}
-            alt="Sphygmos Network"
-            className="h-14 w-auto drop-shadow-sm"
-          />
-          <h1 className="text-xl font-bold text-center">
-            Sphygmos Network
-          </h1>
+        <div className="flex justify-center">
+          <div className="relative pulse-glow">
+            <img
+              src="/logo.svg"
+              alt="Sphygmos Network"
+              className="h-14 w-auto relative z-10"
+            />
+          </div>
         </div>
-
+        
 
         {/* ───── Wallet ───── */}
         <div className="flex justify-center">
