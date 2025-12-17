@@ -3,7 +3,8 @@ import {
   useAccount, 
   useReadContract, 
   useWriteContract, 
-  useWaitForTransactionReceipt 
+  useWaitForTransactionReceipt,
+  useQueryClient // Added for forcing data updates
 } from 'wagmi';
 import { parseUnits, maxUint256 } from 'viem';
 
@@ -14,44 +15,40 @@ const MOCK_USDT_ABI = [
 
 export const TokenApprovalGuard = ({ children, tokenAddress, spenderAddress, amountRequired }: any) => {
   const { address } = useAccount();
+  const queryClient = useQueryClient();
   const requiredWei = parseUnits(amountRequired, 18);
 
-  // 1. Fetch Allowance
-  const { data: allowance, refetch, isError: isReadError } = useReadContract({
+  const { data: allowance, queryKey } = useReadContract({
     address: tokenAddress,
     abi: MOCK_USDT_ABI,
     functionName: 'allowance',
     args: address ? [address, spenderAddress] : undefined,
   });
 
-  // 2. Transaction Hooks (Added 'reset' to clear old state)
-  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
+  const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  // 3. Clear the state and refetch when a transaction finishes
+  // FORCE REFRESH: This ensures the UI "sees" the 0 allowance before you click Approve
   useEffect(() => {
     if (isSuccess) {
-      console.log("Transaction Success! Refreshing...");
-      refetch();
-      // reset(); // Optional: Clears the hash so hooks reset to idle
+      // Small delay for RPC propagation, then clear cache
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey });
+      }, 2000); 
     }
-  }, [isSuccess, refetch, reset]);
+  }, [isSuccess, queryKey, queryClient]);
 
   const handleApprove = () => {
-    console.log("Button Clicked: Approve");
-    if (!address) return alert("Wallet not connected");
-    
     writeContract({
       address: tokenAddress,
       abi: MOCK_USDT_ABI,
       functionName: 'approve',
       args: [spenderAddress, maxUint256],
-      gas: 100000n, // Increased gas slightly for mobile safety
+      gas: 80000n, // Slightly higher for mobile safety
     });
   };
 
   const handleReset = () => {
-    console.log("Button Clicked: Reset");
     writeContract({
       address: tokenAddress,
       abi: MOCK_USDT_ABI,
@@ -61,53 +58,42 @@ export const TokenApprovalGuard = ({ children, tokenAddress, spenderAddress, amo
     });
   };
 
-  // UI Helpers
-  const isLoading = isPending || isConfirming;
-
   if (!address) return <>{children}</>;
 
-  // CASE 1: Needs Reset
+  // CASE 1: Allowance > 0 but < Required (Must Reset first)
   if (allowance !== undefined && allowance > 0n && allowance < requiredWei) {
     return (
-      <div className="glass-card p-6 text-center space-y-4 border-red-500/20">
-        <h3 className="text-red-400 font-bold uppercase text-xs">Step 1: Security Reset</h3>
-        <p className="text-[10px] text-slate-400">USDT requires a reset to 0 before changing limits.</p>
+      <div className="glass-card p-6 text-center space-y-4">
+        <h3 className="text-red-400 font-bold">Inconsistent Allowance</h3>
+        <p className="text-xs text-slate-400">USDT requires a reset to 0 before changing limits.</p>
         <button 
           onClick={handleReset} 
-          disabled={isLoading}
-          className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${isLoading ? 'bg-slate-800 text-slate-500' : 'bg-red-500/20 text-red-400 border border-red-500/40'}`}
+          disabled={isPending || isConfirming}
+          className="w-full py-3 bg-red-500/20 text-red-400 border border-red-500/50 rounded-lg font-bold"
         >
-          {isLoading ? "Processing Reset..." : "Reset to 0"}
+          {isPending || isConfirming ? "Processing Reset..." : "1. Reset to 0"}
         </button>
-        {error && <p className="text-[10px] text-red-500 mt-2">{error.message.split('\n')[0]}</p>}
       </div>
     );
   }
 
-  // CASE 2: Ready to Approve
+  // CASE 2: Allowance is 0 (Ready to set Unlimited)
   if (allowance !== undefined && allowance === 0n) {
     return (
-      <div className="glass-card p-6 text-center space-y-4 border-yellow-400/20">
-        <h3 className="text-yellow-400 font-bold uppercase text-xs">Step 2: Enable Spending</h3>
-        <p className="text-[10px] text-slate-400">Authorize the Controller to use your USDT.</p>
+      <div className="glass-card p-6 text-center space-y-4">
+        <h3 className="text-yellow-400 font-bold uppercase">Enable Trading</h3>
+        <p className="text-xs text-slate-400">Click below to authorize the Sphygmos Controller.</p>
         <button 
           onClick={handleApprove} 
-          disabled={isLoading}
-          className={`w-full py-3 rounded-lg font-black text-sm transition-all shadow-lg ${isLoading ? 'bg-slate-800 text-slate-500' : 'bg-yellow-400 text-black active:scale-95'}`}
+          disabled={isPending || isConfirming}
+          className="w-full py-3 bg-yellow-400 text-black rounded-lg font-black shadow-lg"
         >
-          {isLoading ? "Waiting for Confirmation..." : "2. Enable Unlimited Spend"}
+          {isPending || isConfirming ? "Confirming on Chain..." : "2. Enable Unlimited Spend"}
         </button>
-        
-        {/* Important: Show error on screen for mobile debugging */}
-        {error && (
-          <div className="mt-4 p-2 bg-red-900/20 rounded border border-red-500/20">
-            <p className="text-[9px] text-red-400 break-all">{error.message}</p>
-            <button onClick={() => reset()} className="text-[9px] underline text-slate-400 mt-1">Try Again</button>
-          </div>
-        )}
       </div>
     );
   }
 
+  // CASE 3: Allowance is fine
   return <>{children}</>;
 };
