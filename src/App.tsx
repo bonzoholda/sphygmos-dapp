@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ConnectWallet } from "./components/ConnectWallet";
 import { useController } from "./hooks/useController";
 import { Actions } from "./components/Actions";
@@ -6,23 +7,24 @@ import DripStats from "./components/DripStats";
 import { fmt } from "./utils/format";
 import Logo from "./assets/logo.svg";
 
-// 1. Import the new Guard component
+// 1. Import the Guard and Swap components
 import { TokenApprovalGuard } from "./components/TokenApprovalGuard";
+import { SwapTrading } from "./components/SwapTrading";
 
 /**
  * CONFIGURATION
- * Replace these with your actual deployed addresses or environment variables
  */
-const CONTROLLER_ADDRESS = import.meta.env
-  .VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
+const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
 const MOCK_USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD" as `0x${string}`;
-
 
 export default function App() {
   const { minersPool, rewardPool, totalPU } = useController();
+  
+  // State to toggle between Mining and Trading views
+  const [activeTab, setActiveTab] = useState<"mining" | "trade">("mining");
 
   return (
-    <div className="min-h-screen bg-black bg-grid p-6">
+    <div className="min-h-screen bg-black bg-grid p-6 pb-20">
       {/* ───── Logo ───── */}
       <div className="flex justify-center mb-8">
         <div className="pulse-glow">
@@ -34,40 +36,71 @@ export default function App() {
         </div>
       </div>
 
-      {/* ───── Main Card ───── */}
-      <div className="max-w-md mx-auto glass-card p-6 space-y-6">
-        {/* Tagline */}
-        <h3 className="text-center text-sm text-slate-400">
-          The Heartbeat of Perpetual DeFi
-        </h3>
-
-        {/* Wallet */}
-        <div className="flex justify-center">
-          <ConnectWallet />
+      <div className="max-w-md mx-auto space-y-6">
+        {/* ───── Tab Navigation ───── */}
+        <div className="flex bg-slate-900/50 p-1 rounded-xl border border-yellow-400/20 shadow-inner">
+          <button
+            onClick={() => setActiveTab("mining")}
+            className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all duration-300 ${
+              activeTab === "mining" 
+                ? "bg-yellow-400 text-black shadow-lg shadow-yellow-400/20" 
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            MINING HUB
+          </button>
+          <button
+            onClick={() => setActiveTab("trade")}
+            className={`flex-1 py-3 rounded-lg text-xs font-bold transition-all duration-300 ${
+              activeTab === "trade" 
+                ? "bg-yellow-400 text-black shadow-lg shadow-yellow-400/20" 
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            TRADE SMOS
+          </button>
         </div>
 
-        {/* ───── Protocol Stats ───── */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <Stat label="Miners Pool" value={minersPool.data} decimals={18} />
-          <Stat label="Reward Pool" value={rewardPool.data} decimals={18} />
-          <Stat label="Total PU" value={totalPU.data} decimals={18} />
-        </div>
+        {/* ───── Conditional Content Rendering ───── */}
+        {activeTab === "mining" ? (
+          /* MINING VIEW */
+          <div className="glass-card p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h3 className="text-center text-sm text-slate-400">
+              The Heartbeat of Perpetual DeFi
+            </h3>
 
-        {/* ───── User Stats ───── */}
-        <Stats />
+            <div className="flex justify-center">
+              <ConnectWallet />
+            </div>
 
-        {/* ───── Drip Stats ───── */}
-        <DripStats />
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <Stat label="Miners Pool" value={minersPool.data} decimals={18} />
+              <Stat label="Reward Pool" value={rewardPool.data} decimals={18} />
+              <Stat label="Total PU" value={totalPU.data} decimals={18} />
+            </div>
 
-        {/* ───── Actions ───── */}
-        {/* We wrap Actions so the user must approve before they can Spend/Deposit */}
-        <TokenApprovalGuard 
-          tokenAddress={MOCK_USDT_ADDRESS}
-          spenderAddress={CONTROLLER_ADDRESS}
-          amountRequired="1000000" // Requires 1M allowance for testing (adjust as needed)
-        >
-          <Actions />
-        </TokenApprovalGuard>
+            <Stats />
+            <DripStats />
+
+            <hr className="border-yellow-400/10" />
+
+            {/* Guarded Actions for Controller */}
+            {CONTROLLER_ADDRESS && (
+              <TokenApprovalGuard 
+                tokenAddress={MOCK_USDT_ADDRESS}
+                spenderAddress={CONTROLLER_ADDRESS}
+                amountRequired="1000000" 
+              >
+                <Actions />
+              </TokenApprovalGuard>
+            )}
+          </div>
+        ) : (
+          /* TRADE VIEW */
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <SwapTrading />
+          </div>
+        )}
       </div>
     </div>
   );
