@@ -3,10 +3,20 @@
 @tailwind utilities;
 
 /* ===============================
-   GOOGLE FONT – EXO
+   GOOGLE FONT – EXO (ONLY FONT)
 ================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Exo:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Exo:wght@300;400;500;600;700;800&display=swap");
+
+/* ===============================
+   FORCE FONT OVERRIDE (TAILWIND SAFE)
+================================ */
+
+*,
+*::before,
+*::after {
+  font-family: "Exo", sans-serif !important;
+}
 
 /* ===============================
    GLOBAL THEME
@@ -14,23 +24,21 @@
 
 body {
   margin: 0;
-  font-family: "Exo", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: #000;
-  color: #e5e7eb; /* slate-200 */
+  color: #e5e7eb;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: 0.015em; /* subtle futuristic feel */
+  letter-spacing: 0.015em;
 }
 
-/* Improve number readability */
+/* Numeric alignment WITHOUT mono */
 input,
 button,
-code,
-.font-mono {
+code {
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
 
 /* ===============================
-   TYPOGRAPHY SCALE
+   TYPOGRAPHY HIERARCHY
 ================================ */
 
 h1 {
@@ -55,7 +63,7 @@ h3 {
 .label {
   font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   opacity: 0.75;
 }
@@ -71,14 +79,13 @@ h3 {
 
 .btn {
   @apply w-full py-3 rounded-xl transition-all duration-200;
-  font-family: "Exo", sans-serif;
   font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 
   background: linear-gradient(180deg, #0a0a0a, #000);
-  color: #facc15; /* yellow-400 */
+  color: #facc15;
   border: 1px solid rgba(250, 204, 21, 0.4);
   box-shadow:
     0 0 12px rgba(250, 204, 21, 0.15),
@@ -114,7 +121,6 @@ button:disabled {
 
 .input {
   @apply w-full rounded-xl px-4 py-3 outline-none transition;
-  font-family: "Exo", sans-serif;
   font-size: 1.1rem;
   font-weight: 600;
 
@@ -151,46 +157,7 @@ button:disabled {
 }
 
 /* ===============================
-   NEON PULSE GLOW
-================================ */
-
-@keyframes glowPulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.35;
-  }
-  50% {
-    transform: scale(1.12);
-    opacity: 0.65;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.35;
-  }
-}
-
-.pulse-glow {
-  position: relative;
-}
-
-.pulse-glow::before {
-  content: "";
-  position: absolute;
-  inset: -16px;
-  border-radius: 9999px;
-  background: radial-gradient(
-    circle,
-    rgba(250, 204, 21, 0.7) 0%,
-    rgba(250, 204, 21, 0.25) 35%,
-    transparent 70%
-  );
-  filter: blur(14px);
-  animation: glowPulse 3s ease-in-out infinite;
-  z-index: 0;
-}
-
-/* ===============================
-   TEXT GLOW
+   NEON TEXT
 ================================ */
 
 .text-neon {
@@ -199,42 +166,6 @@ button:disabled {
   text-shadow:
     0 0 8px rgba(250, 204, 21, 0.6),
     0 0 18px rgba(250, 204, 21, 0.35);
-}
-
-/* ===============================
-   GRID BACKGROUND
-================================ */
-
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(250, 204, 21, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(250, 204, 21, 0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* ===============================
-   THEMED PANELS
-================================ */
-
-.panel {
-  @apply rounded-xl bg-black/70 border border-yellow-400/20 p-4;
-}
-
-.panel-title {
-  @apply text-[10px] uppercase tracking-widest text-yellow-400/70;
-  font-weight: 600;
-}
-
-.panel-value {
-  @apply mt-1 text-lg text-neon;
-  font-weight: 600;
-}
-
-/* Wallet Button Override */
-.wallet-btn {
-  @apply bg-black border border-yellow-400 text-yellow-400
-         hover:bg-yellow-400 hover:text-black
-         transition;
 }
 
 /* ===============================
