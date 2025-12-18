@@ -25,7 +25,7 @@ export default function DripStats() {
       : 0n;
 
   return (
-    <div className="glass-card p-4 space-y-3">
+    <div className="grid p-4 space-y-3">
       <h3 className="panel-title">💧 SMOS Drip Emission</h3>
 
       <div className="grid grid-cols-1 gap-4">
