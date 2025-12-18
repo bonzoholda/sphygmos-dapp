@@ -83,14 +83,14 @@ export function Actions() {
   useWaitForTransactionReceipt({
     hash,
     confirmations: 1,
-    query: { enabled: !!hash },
-    async onSuccess() {
+    onSuccess() async () => {
       await publicClient.invalidateContracts({
         address: controller as `0x${string}`,
       });
       refetchAll();
     },
   });
+
 
   if (!address || !controller) return null;
 
