@@ -5,6 +5,10 @@ import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 import { useState } from "react";
 import { TxStatus } from "./TxStatus";
+import { usePublicClient } from "wagmi";
+
+const publicClient = usePublicClient();
+
 
 const controller = import.meta.env
   .VITE_CONTROLLER_ADDRESS as `0x${string}`;
@@ -77,12 +81,14 @@ export function Actions() {
   });
 
   useWaitForTransactionReceipt({
-    hash: claimTx,
+    hash,
     confirmations: 1,
-    query: { enabled: !!claimTx },
-    onSuccess() {
+    query: { enabled: !!hash },
+    async onSuccess() {
+      await publicClient.invalidateContracts({
+        address: controller as `0x${string}`,
+      });
       refetchAll();
-      setClaimTx(undefined);
     },
   });
 
