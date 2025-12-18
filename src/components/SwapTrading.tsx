@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import {
   useAccount,
   useBalance,
@@ -10,7 +10,6 @@ import { parseUnits, formatUnits } from "viem";
 import { TokenApprovalGuard } from "./TokenApprovalGuard";
 import { TxStatus } from "./TxStatus";
 
-// PancakeSwap V2 Router (BSC Testnet)
 const ROUTER_ADDRESS = "0xD99D1c33F9fC3444f8101754aBC46c52416550D1";
 const USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD";
 const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb";
@@ -51,69 +50,66 @@ export function SwapTrading() {
   const tokenOut = isBuy ? SMOS_ADDRESS : USDT_ADDRESS;
 
   /* ───────── Wallet Balances ───────── */
-  const usdtBal = useBalance({ address, token: USDT_ADDRESS });
-  const smosBal = useBalance({ address, token: SMOS_ADDRESS });
+  // Extracted refetch functions
+  const { data: usdtData, refetch: refetchUsdt } = useBalance({ address, token: USDT_ADDRESS });
+  const { data: smosData, refetch: refetchSmos } = useBalance({ address, token: SMOS_ADDRESS });
 
-  /* ───────── Price (1 SMOS = ? USDT) ───────── */
-  const { data: priceData } = useReadContract({
+  /* ───────── Price & Quote ───────── */
+  // Extracted refetch functions for contract reads
+  const { data: priceData, refetch: refetchPrice } = useReadContract({
     address: ROUTER_ADDRESS,
     abi: ROUTER_ABI,
     functionName: "getAmountsOut",
     args: [parseUnits("1", 18), [SMOS_ADDRESS, USDT_ADDRESS]],
   });
 
-  const smosPriceUSDT = priceData
-    ? Number(formatUnits(priceData[1], 18)).toFixed(4)
-    : "0.00";
-
-  /* ───────── Quote ───────── */
-  const { data: quoteData } = useReadContract({
+  const { data: quoteData, refetch: refetchQuote } = useReadContract({
     address: ROUTER_ADDRESS,
     abi: ROUTER_ABI,
     functionName: "getAmountsOut",
-    args:
-      amountIn && Number(amountIn) > 0
-        ? [parseUnits(amountIn, 18), [tokenIn, tokenOut]]
-        : undefined,
+    args: amountIn && Number(amountIn) > 0 ? [parseUnits(amountIn, 18), [tokenIn, tokenOut]] : undefined,
   });
 
-  const estimatedOut = quoteData
-    ? Number(formatUnits(quoteData[1], 18)).toFixed(4)
-    : "0.0000";
+  const smosPriceUSDT = priceData ? Number(formatUnits(priceData[1], 18)).toFixed(4) : "0.00";
+  const estimatedOut = quoteData ? Number(formatUnits(quoteData[1], 18)).toFixed(4) : "0.0000";
 
   /* ───────── Swap Execution ───────── */
-  const { writeContract, isPending } = useWriteContract();
-  const { isLoading: isConfirming } =
-    useWaitForTransactionReceipt({ hash: txHash });
+  const { writeContractAsync, isPending } = useWriteContract(); // Use writeContractAsync for easier hash handling
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+
+  // Auto-refresh logic
+  useEffect(() => {
+    if (isSuccess) {
+      refetchUsdt();
+      refetchSmos();
+      refetchPrice();
+      refetchQuote();
+      setAmountIn("");
+      setTxHash(undefined);
+    }
+  }, [isSuccess, refetchUsdt, refetchSmos, refetchPrice, refetchQuote]);
 
   const handleSwap = async () => {
     if (!quoteData || !address) return;
 
-    const deadline = BigInt(
-      Math.floor(Date.now() / 1000) + 1200
-    );
-    const minOut = (quoteData[1] * 95n) / 100n;
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
+    const minOut = (quoteData[1] * 95n) / 100n; // 5% Slippage
 
-    const hash = await writeContract({
-      address: ROUTER_ADDRESS,
-      abi: ROUTER_ABI,
-      functionName:
-        "swapExactTokensForTokensSupportingFeeOnTransferTokens",
-      args: [
-        parseUnits(amountIn, 18),
-        minOut,
-        [tokenIn, tokenOut],
-        address,
-        deadline,
-      ],
-    });
-
-    setTxHash(hash);
+    try {
+      const hash = await writeContractAsync({
+        address: ROUTER_ADDRESS,
+        abi: ROUTER_ABI,
+        functionName: "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+        args: [parseUnits(amountIn, 18), minOut, [tokenIn, tokenOut], address, deadline],
+      });
+      setTxHash(hash);
+    } catch (err) {
+      console.error("Swap failed", err);
+    }
   };
 
   return (
     <div className="glass-card p-6 space-y-6 border-t-2 border-yellow-500/30">
-      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <p className="panel-title">Trading Hub</p>
@@ -133,13 +129,11 @@ export function SwapTrading() {
         </button>
       </div>
 
-      {/* Balances */}
       <div className="grid grid-cols-2 gap-2">
-        <BalanceChip label="USDT" val={usdtBal.data?.formatted} />
-        <BalanceChip label="SMOS" val={smosBal.data?.formatted} neon />
+        <BalanceChip label="USDT" val={usdtData?.formatted} />
+        <BalanceChip label="SMOS" val={smosData?.formatted} neon />
       </div>
 
-      {/* Input / Output */}
       <div className="space-y-3">
         <div className="bg-black/40 p-4 rounded-xl border border-white/10">
           <input
@@ -155,16 +149,13 @@ export function SwapTrading() {
         </div>
 
         <div className="bg-black/20 p-4 rounded-xl border border-white/5 border-dashed">
-          <p className="text-2xl font-black text-slate-400">
-            {estimatedOut}
-          </p>
+          <p className="text-2xl font-black text-slate-400">{estimatedOut}</p>
           <p className="text-[10px] text-slate-500 uppercase mt-1 font-bold">
             Receive (Estimated)
           </p>
         </div>
       </div>
 
-      {/* Approval + Swap */}
       <TokenApprovalGuard
         tokenAddress={tokenIn}
         spenderAddress={ROUTER_ADDRESS}
@@ -172,23 +163,13 @@ export function SwapTrading() {
       >
         <button
           onClick={handleSwap}
-          disabled={
-            !amountIn ||
-            estimatedOut === "0.0000" ||
-            isPending ||
-            isConfirming
-          }
+          disabled={!amountIn || estimatedOut === "0.0000" || isPending || isConfirming}
           className="btn btn-outline w-full"
         >
-          {isPending || isConfirming
-            ? "Processing..."
-            : isBuy
-            ? "Buy SMOS"
-            : "Sell SMOS"}
+          {isPending || isConfirming ? "Processing..." : isBuy ? "Buy SMOS" : "Sell SMOS"}
         </button>
       </TokenApprovalGuard>
 
-      {/* TX STATUS */}
       <TxStatus hash={txHash} />
 
       {estimatedOut === "0.0000" && amountIn && (
@@ -200,26 +181,11 @@ export function SwapTrading() {
   );
 }
 
-/* ───────── Balance Chip ───────── */
-function BalanceChip({
-  label,
-  val,
-  neon,
-}: {
-  label: string;
-  val?: string;
-  neon?: boolean;
-}) {
+function BalanceChip({ label, val, neon }: { label: string; val?: string; neon?: boolean }) {
   return (
     <div className="bg-white/5 rounded-lg p-2 border border-white/5">
-      <p className="text-[8px] text-slate-500 uppercase">
-        {label} Balance
-      </p>
-      <p
-        className={`text-xs font-mono font-bold ${
-          neon ? "text-neon" : "text-white"
-        }`}
-      >
+      <p className="text-[8px] text-slate-500 uppercase">{label} Balance</p>
+      <p className={`text-xs font-mono font-bold ${neon ? "text-neon" : "text-white"}`}>
         {Number(val || 0).toFixed(2)}
       </p>
     </div>
