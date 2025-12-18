@@ -78,13 +78,14 @@ export function Actions() {
   });
 
   useWaitForTransactionReceipt({
-    hash,
+    hash: claimTx,
     confirmations: 1,
+    query: { enabled: !!claimTx },
     onSuccess() {
       refetchAll();
+      setClaimTx(undefined);
     },
   });
-
 
 
   if (!address || !controller) return null;
