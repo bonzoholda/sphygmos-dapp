@@ -3,15 +3,66 @@
 @tailwind utilities;
 
 /* ===============================
+   GOOGLE FONT – EXO
+================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Exo:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+
+/* ===============================
    GLOBAL THEME
 ================================ */
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Exo", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: #000;
   color: #e5e7eb; /* slate-200 */
   -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.015em; /* subtle futuristic feel */
+}
+
+/* Improve number readability */
+input,
+button,
+code,
+.font-mono {
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* ===============================
+   TYPOGRAPHY SCALE
+================================ */
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.value {
+  font-size: 1.15rem;
+  font-weight: 600;
 }
 
 /* ===============================
@@ -19,7 +70,13 @@ body {
 ================================ */
 
 .btn {
-  @apply w-full py-3 rounded-xl font-semibold transition-all duration-200;
+  @apply w-full py-3 rounded-xl transition-all duration-200;
+  font-family: "Exo", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+
   background: linear-gradient(180deg, #0a0a0a, #000);
   color: #facc15; /* yellow-400 */
   border: 1px solid rgba(250, 204, 21, 0.4);
@@ -57,6 +114,10 @@ button:disabled {
 
 .input {
   @apply w-full rounded-xl px-4 py-3 outline-none transition;
+  font-family: "Exo", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+
   background: rgba(10, 10, 10, 0.85);
   color: #f9fafb;
   border: 1px solid rgba(250, 204, 21, 0.25);
@@ -64,6 +125,7 @@ button:disabled {
 
 .input::placeholder {
   color: rgba(250, 204, 21, 0.35);
+  font-weight: 500;
 }
 
 .input:focus {
@@ -89,7 +151,7 @@ button:disabled {
 }
 
 /* ===============================
-   NEON PULSE GLOW (LOGO / HIGHLIGHTS)
+   NEON PULSE GLOW
 ================================ */
 
 @keyframes glowPulse {
@@ -128,18 +190,19 @@ button:disabled {
 }
 
 /* ===============================
-   TEXT GLOW (HEADERS / KEY STATS)
+   TEXT GLOW
 ================================ */
 
 .text-neon {
   color: #facc15;
+  font-weight: 600;
   text-shadow:
     0 0 8px rgba(250, 204, 21, 0.6),
     0 0 18px rgba(250, 204, 21, 0.35);
 }
 
 /* ===============================
-   SUBTLE GRID BACKGROUND (OPTIONAL)
+   GRID BACKGROUND
 ================================ */
 
 .bg-grid {
@@ -149,17 +212,22 @@ button:disabled {
   background-size: 40px 40px;
 }
 
-/* ───── Themed Containers ───── */
+/* ===============================
+   THEMED PANELS
+================================ */
+
 .panel {
   @apply rounded-xl bg-black/70 border border-yellow-400/20 p-4;
 }
 
 .panel-title {
-  @apply text-xs uppercase tracking-wide text-yellow-400/70;
+  @apply text-[10px] uppercase tracking-widest text-yellow-400/70;
+  font-weight: 600;
 }
 
 .panel-value {
-  @apply mt-1 text-lg font-semibold text-neon;
+  @apply mt-1 text-lg text-neon;
+  font-weight: 600;
 }
 
 /* Wallet Button Override */
@@ -169,13 +237,13 @@ button:disabled {
          transition;
 }
 
-/* ============================================================
-   GLASS CARD (FUTURISTIC)
-============================================================ */
+/* ===============================
+   GLASS CARD
+================================ */
 
 .glass-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.06); /* lighter than bg */
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-radius: 1rem;
@@ -187,7 +255,6 @@ button:disabled {
     inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-/* Soft neon edge glow */
 .glass-card::after {
   content: "";
   position: absolute;
@@ -199,5 +266,3 @@ button:disabled {
     0 0 40px rgba(250, 204, 21, 0.05);
   opacity: 0.8;
 }
-
-   
