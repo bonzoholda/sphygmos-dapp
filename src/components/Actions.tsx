@@ -5,8 +5,14 @@ import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 import { useState } from "react";
 import { TxStatus } from "./TxStatus";
+import { Wallet } from "lucide-react";
 
-const controller = import.meta.env.VITE_CONTROLLER_ADDRESS;
+const controller = import.meta.env
+  .VITE_CONTROLLER_ADDRESS as `0x${string}`;
+
+const USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD";
+
+const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb";
 
 export function Actions() {
   const { address } = useAccount();
@@ -18,9 +24,21 @@ export function Actions() {
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
 
-  /* ─────────────────────────────────────
-     SAFE TX WATCHERS (AUTO-REFRESH)
-     ───────────────────────────────────── */
+  /* ───────── Wallet Balances ───────── */
+
+  const { data: usdtBalance } = useBalance({
+    address,
+    token: USDT_ADDRESS,
+    query: { enabled: !!address },
+  });
+
+  const { data: smosBalance } = useBalance({
+    address,
+    token: SMOS_ADDRESS,
+    query: { enabled: !!address },
+  });
+
+  /* ───────── TX WATCHERS ───────── */
 
   useWaitForTransactionReceipt({
     hash: puTx,
@@ -54,21 +72,28 @@ export function Actions() {
     },
   });
 
-  /* ───────────────────────────────────── */
-  
   if (!address || !controller) return null;
 
   return (
     <div className="space-y-6">
 
-      {/* Acquire PU */}
+      {/* ───────── Acquire PU ───────── */}
       <div className="space-y-2">
-        <input
-          className="input w-full"
-          placeholder="USDT amount"
-          value={puAmount}
-          onChange={(e) => setPuAmount(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            className="input w-full pr-28"
+            placeholder="USDT amount"
+            value={puAmount}
+            onChange={(e) => setPuAmount(e.target.value)}
+          />
+
+          <div className="absolute inset-y-0 right-3 flex items-center gap-1 text-xs text-slate-400">
+            <Wallet size={14} />
+            {usdtBalance
+              ? Number(formatUnits(usdtBalance.value, usdtBalance.decimals)).toFixed(2)
+              : "0.00"}
+          </div>
+        </div>
 
         <button
           className="btn w-full"
@@ -76,7 +101,7 @@ export function Actions() {
           onClick={async () => {
             try {
               const hash = await acquirePU.writeContractAsync({
-                address: controller as `0x${string}`,
+                address: controller,
                 abi: SPHYGMOS_CONTROLLER_ABI,
                 functionName: "depositPush",
                 args: [parseUnits(puAmount, 18)],
@@ -93,14 +118,23 @@ export function Actions() {
         <TxStatus hash={puTx} />
       </div>
 
-      {/* Stake SMOS */}
+      {/* ───────── Stake SMOS ───────── */}
       <div className="space-y-2">
-        <input
-          className="input w-full"
-          placeholder="SMOS amount"
-          value={stakeAmount}
-          onChange={(e) => setStakeAmount(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            className="input w-full pr-28"
+            placeholder="SMOS amount"
+            value={stakeAmount}
+            onChange={(e) => setStakeAmount(e.target.value)}
+          />
+
+          <div className="absolute inset-y-0 right-3 flex items-center gap-1 text-xs text-slate-400">
+            <Wallet size={14} />
+            {smosBalance
+              ? Number(formatUnits(smosBalance.value, smosBalance.decimals)).toFixed(2)
+              : "0.00"}
+          </div>
+        </div>
 
         <button
           className="btn w-full"
@@ -108,7 +142,7 @@ export function Actions() {
           onClick={async () => {
             try {
               const hash = await stakeSMOS.writeContractAsync({
-                address: controller as `0x${string}`,
+                address: controller,
                 abi: SPHYGMOS_CONTROLLER_ABI,
                 functionName: "stake",
                 args: [parseUnits(stakeAmount, 18)],
@@ -125,14 +159,14 @@ export function Actions() {
         <TxStatus hash={stakeTx} />
       </div>
 
-      {/* Claim */}
+      {/* ───────── Claim Rewards ───────── */}
       <button
         className="btn btn-outline w-full"
         disabled={claimMiner.isPending}
         onClick={async () => {
           try {
             const hash = await claimMiner.writeContractAsync({
-              address: controller as `0x${string}`,
+              address: controller,
               abi: SPHYGMOS_CONTROLLER_ABI,
               functionName: "claimMinerRewards",
             });
