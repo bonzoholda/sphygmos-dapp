@@ -11,8 +11,6 @@ import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 const CONTROLLER_ADDRESS = import.meta.env
   .VITE_CONTROLLER_ADDRESS as `0x${string}`;
 
-const LOCK_DURATION = 604800n; // 7 days
-
 /* ───────── Helper: Lock Status Formatter ───────── */
 function formatLockTime(unlockTs: bigint) {
   if (unlockTs === 0n)
@@ -65,30 +63,31 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  const { data: lastDepositTime } = useReadContract({
+  // 🔒 REAL LOCK SOURCE (FROM SOLIDITY)
+  const { data: unlockTime } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
-    functionName: "lastDepositTime",
+    functionName: "unlockTime",
     args: [safeAddress],
     query: { enabled: !!address },
   });
 
-  /* ───────── Timer Tick ───────── */
+  /* ───────── Timer Tick (re-render every minute) ───────── */
   const [, forceTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => forceTick((v) => v + 1), 60000);
     return () => clearInterval(t);
   }, []);
 
-  /* ───────── Lock Computation (SINGLE SOURCE OF TRUTH) ───────── */
-  const unlockTimestamp = useMemo(() => {
-    if (!lastDepositTime) return 0n;
-    return BigInt(lastDepositTime.toString()) + LOCK_DURATION;
-  }, [lastDepositTime]);
+  /* ───────── Lock Status (Single Source of Truth) ───────── */
+  const unlockTs = useMemo(() => {
+    if (!unlockTime) return 0n;
+    return BigInt(unlockTime.toString());
+  }, [unlockTime]);
 
   const lockInfo = useMemo(
-    () => formatLockTime(unlockTimestamp),
-    [unlockTimestamp]
+    () => formatLockTime(unlockTs),
+    [unlockTs]
   );
 
   const hasStake =
@@ -104,7 +103,8 @@ export default function Stats() {
       writeContract({
         address: CONTROLLER_ADDRESS,
         abi: SPHYGMOS_CONTROLLER_ABI,
-        functionName: "withdraw",
+        functionName: "unstakeSMOS", // <-- matches Solidity
+        args: [stakedSMOS],
       });
     }
   };
