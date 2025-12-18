@@ -1,14 +1,52 @@
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { useEffect, useState } from "react";
+import {
+  useAccount,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { useEffect, useMemo, useState } from "react";
 import { fmt } from "../utils/format";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 
-const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
-const LOCK_DURATION = 604800n; // 7 days in seconds as BigInt
+const CONTROLLER_ADDRESS = import.meta.env
+  .VITE_CONTROLLER_ADDRESS as `0x${string}`;
+
+const LOCK_DURATION = 604800n; // 7 days
+
+/* ───────── Helper: Lock Status Formatter ───────── */
+function formatLockTime(unlockTs: bigint) {
+  if (unlockTs === 0n)
+    return { status: "Not Staked", locked: false };
+
+  const now = Math.floor(Date.now() / 1000);
+  const diff = Number(unlockTs) - now;
+
+  if (diff <= 0)
+    return {
+      status: "Unlocked & Ready",
+      locked: false,
+    };
+
+  const days = Math.floor(diff / 86400);
+  const hours = Math.floor((diff % 86400) / 3600);
+  const minutes = Math.floor((diff % 3600) / 60);
+
+  return {
+    status: `Locked ${days
+      .toString()
+      .padStart(2, "0")}d:${hours
+      .toString()
+      .padStart(2, "0")}h:${minutes
+      .toString()
+      .padStart(2, "0")}m`,
+    locked: true,
+  };
+}
 
 export default function Stats() {
   const { address } = useAccount();
-  const safeAddress = address ?? "0x0000000000000000000000000000000000000000";
+  const safeAddress =
+    address ?? "0x0000000000000000000000000000000000000000";
 
   /* ───────── Contract Reads ───────── */
   const { data: userPU } = useReadContract({
@@ -35,41 +73,34 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
+  /* ───────── Timer Tick ───────── */
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick((v) => v + 1), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  /* ───────── Lock Computation (SINGLE SOURCE OF TRUTH) ───────── */
+  const unlockTimestamp = useMemo(() => {
+    if (!lastDepositTime) return 0n;
+    return BigInt(lastDepositTime.toString()) + LOCK_DURATION;
+  }, [lastDepositTime]);
+
+  const lockInfo = useMemo(
+    () => formatLockTime(unlockTimestamp),
+    [unlockTimestamp]
+  );
+
+  const hasStake =
+    stakedSMOS !== undefined && BigInt(stakedSMOS) > 0n;
+
   /* ───────── Unstake Logic ───────── */
   const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
-
-  // ───────── Refactored Timer Logic ─────────
-  const [secondsLeft, setSecondsLeft] = useState<number>(0);
-
-  useEffect(() => {
-    if (!lastDepositTime || !stakedSMOS) {
-      setSecondsLeft(0);
-      return;
-    }
-
-    // Safe BigInt conversion for lastDepositTime
-    const depositTs =
-      typeof lastDepositTime === "object" && lastDepositTime !== null && "toBigInt" in lastDepositTime
-        ? (lastDepositTime as any).toBigInt()
-        : BigInt(lastDepositTime.toString());
-
-    const unlockTs = depositTs + LOCK_DURATION;
-
-    const interval = setInterval(() => {
-      const now = BigInt(Math.floor(Date.now() / 1000));
-      const remaining = unlockTs > now ? unlockTs - now : 0n;
-      setSecondsLeft(Number(remaining));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [lastDepositTime, stakedSMOS]);
-
-  const hasStake = stakedSMOS ? BigInt(stakedSMOS.toString()) > 0n : false;
-  const isLocked = hasStake && secondsLeft > 0;
+  const { isLoading: isConfirming } =
+    useWaitForTransactionReceipt({ hash });
 
   const handleUnstake = () => {
-    if (!isLocked && hasStake) {
+    if (!lockInfo.locked && hasStake) {
       writeContract({
         address: CONTROLLER_ADDRESS,
         abi: SPHYGMOS_CONTROLLER_ABI,
@@ -84,11 +115,16 @@ export default function Stats() {
       <div className="grid grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <p className="panel-title">Your Power Units</p>
-          <p className="panel-value text-white">{fmt(userPU)}</p>
+          <p className="panel-value text-white">
+            {fmt(userPU)}
+          </p>
         </div>
+
         <div className="glass-card p-4">
           <p className="panel-title">Staked SMOS</p>
-          <p className="panel-value text-neon">{fmt(stakedSMOS)}</p>
+          <p className="panel-value text-neon">
+            {fmt(stakedSMOS)}
+          </p>
         </div>
       </div>
 
@@ -96,16 +132,23 @@ export default function Stats() {
       <div className="glass-card p-4 space-y-4 border-t-2 border-yellow-500/20">
         <div className="flex justify-between items-end">
           <div>
-            <p className="panel-title">Staked Lock Status</p>
-            <p className={`text-lg font-mono font-bold ${isLocked ? "text-yellow-400" : "text-green-400"}`}>
+            <p className="panel-title">
+              Staked Lock Status
+            </p>
+            <p
+              className={`text-lg font-mono font-bold ${
+                lockInfo.locked
+                  ? "text-yellow-400"
+                  : "text-green-400"
+              }`}
+            >
               {hasStake
-                ? isLocked
-                  ? `Locked: ${formatTimer(secondsLeft)}`
-                  : "Unlocked & Ready"
+                ? lockInfo.status
                 : "No Stake found"}
             </p>
           </div>
-          {isLocked && (
+
+          {lockInfo.locked && (
             <span className="text-[10px] bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 px-2 py-1 rounded animate-pulse">
               168H LOCK
             </span>
@@ -114,26 +157,20 @@ export default function Stats() {
 
         <button
           onClick={handleUnstake}
-          disabled={isLocked || !hasStake || isConfirming}
+          disabled={
+            lockInfo.locked || !hasStake || isConfirming
+          }
           className={`w-full py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-            isLocked || !hasStake
+            lockInfo.locked || !hasStake
               ? "bg-slate-900 text-slate-600 cursor-not-allowed grayscale border border-white/5"
               : "bg-red-600 text-white hover:bg-red-700 shadow-lg active:scale-95 shadow-red-900/20"
           }`}
         >
-          {isConfirming ? "Processing..." : "Unstake SMOS"}
+          {isConfirming
+            ? "Processing..."
+            : "Unstake SMOS"}
         </button>
       </div>
     </div>
   );
-}
-
-function formatTimer(sec: number) {
-  if (sec <= 0) return "00d:00h:00m";
-  const d = Math.floor(sec / 86400);
-  const h = Math.floor((sec % 86400) / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  return `${d.toString().padStart(2, "0")}d:${h.toString().padStart(2, "0")}h:${m
-    .toString()
-    .padStart(2, "0")}m`;
 }
