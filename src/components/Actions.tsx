@@ -5,9 +5,6 @@ import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 import { useState } from "react";
 import { TxStatus } from "./TxStatus";
-import { usePublicClient } from "wagmi";
-
-const publicClient = usePublicClient();
 
 
 const controller = import.meta.env
