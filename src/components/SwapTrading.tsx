@@ -178,7 +178,7 @@ export function SwapTrading() {
             isPending ||
             isConfirming
           }
-          className="w-full py-4 rounded-xl bg-yellow-400 text-black font-black uppercase tracking-widest shadow-lg shadow-yellow-400/20 active:scale-95 disabled:opacity-30"
+          className="btn btn-outline w-full"
         >
           {isPending || isConfirming
             ? "Processing..."
