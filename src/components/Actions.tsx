@@ -5,7 +5,6 @@ import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
 import { useState } from "react";
 import { TxStatus } from "./TxStatus";
-import { Wallet } from "lucide-react";
 
 const controller = import.meta.env
   .VITE_CONTROLLER_ADDRESS as `0x${string}`;
@@ -13,6 +12,22 @@ const controller = import.meta.env
 const USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD";
 
 const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb";
+
+/* ───────── Wallet SVG (NO DEPENDENCY) ───────── */
+function WalletIcon() {
+  return (
+    <svg
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M3 7h18v10H3z" />
+      <path d="M16 11h4v2h-4z" />
+    </svg>
+  );
+}
 
 export function Actions() {
   const { address } = useAccount();
@@ -25,7 +40,6 @@ export function Actions() {
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
 
   /* ───────── Wallet Balances ───────── */
-
   const { data: usdtBalance } = useBalance({
     address,
     token: USDT_ADDRESS,
@@ -88,9 +102,14 @@ export function Actions() {
           />
 
           <div className="absolute inset-y-0 right-3 flex items-center gap-1 text-xs text-slate-400">
-            <Wallet size={14} />
+            <WalletIcon />
             {usdtBalance
-              ? Number(formatUnits(usdtBalance.value, usdtBalance.decimals)).toFixed(2)
+              ? Number(
+                  formatUnits(
+                    usdtBalance.value,
+                    usdtBalance.decimals
+                  )
+                ).toFixed(2)
               : "0.00"}
           </div>
         </div>
@@ -100,19 +119,22 @@ export function Actions() {
           disabled={!puAmount || acquirePU.isPending}
           onClick={async () => {
             try {
-              const hash = await acquirePU.writeContractAsync({
-                address: controller,
-                abi: SPHYGMOS_CONTROLLER_ABI,
-                functionName: "depositPush",
-                args: [parseUnits(puAmount, 18)],
-              });
+              const hash =
+                await acquirePU.writeContractAsync({
+                  address: controller,
+                  abi: SPHYGMOS_CONTROLLER_ABI,
+                  functionName: "depositPush",
+                  args: [parseUnits(puAmount, 18)],
+                });
               setPuTx(hash);
             } catch (err) {
               console.error("Acquire PU failed", err);
             }
           }}
         >
-          {acquirePU.isPending ? "Processing…" : "Acquire Power Units"}
+          {acquirePU.isPending
+            ? "Processing…"
+            : "Acquire Power Units"}
         </button>
 
         <TxStatus hash={puTx} />
@@ -129,9 +151,14 @@ export function Actions() {
           />
 
           <div className="absolute inset-y-0 right-3 flex items-center gap-1 text-xs text-slate-400">
-            <Wallet size={14} />
+            <WalletIcon />
             {smosBalance
-              ? Number(formatUnits(smosBalance.value, smosBalance.decimals)).toFixed(2)
+              ? Number(
+                  formatUnits(
+                    smosBalance.value,
+                    smosBalance.decimals
+                  )
+                ).toFixed(2)
               : "0.00"}
           </div>
         </div>
@@ -141,19 +168,22 @@ export function Actions() {
           disabled={!stakeAmount || stakeSMOS.isPending}
           onClick={async () => {
             try {
-              const hash = await stakeSMOS.writeContractAsync({
-                address: controller,
-                abi: SPHYGMOS_CONTROLLER_ABI,
-                functionName: "stake",
-                args: [parseUnits(stakeAmount, 18)],
-              });
+              const hash =
+                await stakeSMOS.writeContractAsync({
+                  address: controller,
+                  abi: SPHYGMOS_CONTROLLER_ABI,
+                  functionName: "stake",
+                  args: [parseUnits(stakeAmount, 18)],
+                });
               setStakeTx(hash);
             } catch (err) {
               console.error("Stake failed", err);
             }
           }}
         >
-          {stakeSMOS.isPending ? "Staking…" : "Stake SMOS"}
+          {stakeSMOS.isPending
+            ? "Staking…"
+            : "Stake SMOS"}
         </button>
 
         <TxStatus hash={stakeTx} />
@@ -165,18 +195,21 @@ export function Actions() {
         disabled={claimMiner.isPending}
         onClick={async () => {
           try {
-            const hash = await claimMiner.writeContractAsync({
-              address: controller,
-              abi: SPHYGMOS_CONTROLLER_ABI,
-              functionName: "claimMinerRewards",
-            });
+            const hash =
+              await claimMiner.writeContractAsync({
+                address: controller,
+                abi: SPHYGMOS_CONTROLLER_ABI,
+                functionName: "claimMinerRewards",
+              });
             setClaimTx(hash);
           } catch (err) {
             console.error("Claim failed", err);
           }
         }}
       >
-        {claimMiner.isPending ? "Claiming…" : "Claim Mining Rewards"}
+        {claimMiner.isPending
+          ? "Claiming…"
+          : "Claim Mining Rewards"}
       </button>
 
       <TxStatus hash={claimTx} />
