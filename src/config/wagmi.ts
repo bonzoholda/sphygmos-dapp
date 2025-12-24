@@ -27,7 +27,7 @@ export const wagmiConfig = defaultWagmiConfig({
 
   // This ensures the wallet knows where to "send" the user back to
   // For Telegram, we often need to force the universal link redirect
-  enableInjected: false, // 🚨 Disable injected on mobile to force WalletConnect
+  enableInjected: true, // 🚨 Disable injected on mobile to force WalletConnect
   enableEIP6963: true,
   enableCoinbaseWallet: false, 
 });
