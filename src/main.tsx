@@ -20,6 +20,12 @@ createWeb3Modal({
   themeMode: 'dark'     // Fits the Telegram dark mode well
 });
 
+window.addEventListener("open-web3modal", () => {
+  const btn = document.querySelector("w3m-button") as any;
+  btn?.click?.();
+});
+
+
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
