@@ -1,35 +1,34 @@
 import { init, openLink } from '@telegram-apps/sdk-react';
 
-// 1. Initialize the SDK
-init();
+// Check if we are inside Telegram before running any SDK code
+const isTelegram = typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.platform !== 'unknown';
 
-// 2. The Proven Patch for Mobile ERR_UNKNOWN_URL_SCHEME
-const originalOpen = window.open;
-window.open = (url: string | URL | undefined, target?: string, features?: string) => {
-  const urlString = url?.toString() || '';
+if (isTelegram) {
+  try {
+    init();
+    
+    // Patch window.open ONLY if in Telegram
+    const originalOpen = window.open;
+    window.open = (url: string | URL | undefined, target?: string, features?: string) => {
+      const urlString = url?.toString() || '';
 
-  // Intercept common wallet schemes
-  if (urlString.startsWith('metamask:') || urlString.startsWith('trust:') || urlString.startsWith('tpouter:')) {
-    let finalUrl = urlString;
+      if (urlString.startsWith('metamask:') || urlString.startsWith('trust:') || urlString.startsWith('tpouter:')) {
+        let finalUrl = urlString;
+        if (urlString.startsWith('metamask:')) {
+          finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
+        } else if (urlString.startsWith('trust:')) {
+          finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
+        }
 
-    // Transform deep links into Universal Links (Web-compatible)
-    if (urlString.startsWith('metamask:')) {
-      finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
-    } else if (urlString.startsWith('trust:')) {
-      finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
-    }
-
-    // Use openLink directly (it's now a direct export)
-    try {
-      openLink(finalUrl);
-      return null; 
-    } catch (e) {
-      console.error("Telegram openLink failed, falling back", e);
-    }
+        openLink(finalUrl);
+        return null;
+      }
+      return originalOpen(url, target, features);
+    };
+  } catch (e) {
+    console.warn("Telegram SDK initialization failed, continuing in web mode", e);
   }
-
-  return originalOpen(url, target, features);
-};
+}
 
 import React from "react";
 import ReactDOM from "react-dom/client";
