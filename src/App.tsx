@@ -28,8 +28,12 @@ export default function App() {
   const { isConnected } = useAccount();
   const { open } = useWeb3Modal();
 
-  // Telegram WebApp Object
-  const tg = useMemo(() => (window as any).Telegram?.WebApp, []);
+  // Optimized Telegram Detection
+  const tg = useMemo(() => {
+    const telegramApp = (window as any).Telegram?.WebApp;
+    // Only return if we are actually inside the Telegram environment
+    return telegramApp?.platform !== 'unknown' ? telegramApp : null;
+  }, []);
 
   /**
    * Telegram Native Integration
@@ -39,16 +43,19 @@ export default function App() {
     if (!tg) return;
 
     tg.ready();
-    tg.expand(); // Opens the mini app to full height
+    tg.expand();
 
-    // Logic for the Bottom "Main Button" in Telegram
     if (!isConnected) {
       tg.MainButton.setText("CONNECT WALLET");
       tg.MainButton.show();
       
-      const handleMainButtonClick = () => open();
-      tg.MainButton.onClick(handleMainButtonClick);
+      const handleMainButtonClick = () => {
+        // Haptic feedback for the click
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
+        open();
+      };
 
+      tg.MainButton.onClick(handleMainButtonClick);
       return () => {
         tg.MainButton.offClick(handleMainButtonClick);
         tg.MainButton.hide();
@@ -111,12 +118,10 @@ export default function App() {
               The Heartbeat of Perpetual DeFi
             </h3>
 
-            {/* Wallet button only shows on Web; hidden on Telegram since we use the Main Button */}
-            {!tg && (
-              <div className="flex justify-center">
-                <ConnectWallet />
-              </div>
-            )}
+            {/* FIX: Ensure the button is visible everywhere if the MainButton isn't showing */}
+            <div className="flex justify-center">
+              <ConnectWallet />
+            </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <Stat label="Miners Pool" value={minersPool.data} decimals={18} />
