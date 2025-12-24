@@ -1,12 +1,3 @@
-(window as any).global = window;
-
-if (typeof window !== "undefined") {
-  const tg = (window as any).Telegram?.WebApp;
-  if (tg && (tg.platform === "android" || tg.platform === "ios")) {
-    document.body.classList.add("telegram-mobile");
-  }
-}
-
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -15,32 +6,66 @@ import "./index.css";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { wagmiConfig } from "./config/wagmi";
-import { createWeb3Modal } from '@web3modal/wagmi/react'; // 1. Import the modal creator
+import { createWeb3Modal } from "@web3modal/wagmi/react";
 
-// 2. Configuration for the Modal
-// Replace with your actual Project ID from cloud.reown.com
-const projectId = '0e067b77e88bde54e08e5d0a94da2cc6'; 
+import { init, openLink } from "@telegram-apps/sdk-react";
+
+// ---- Telegram setup (SAFE) ----
+if (typeof window !== "undefined") {
+  (window as any).global = window;
+
+  const tg = (window as any).Telegram?.WebApp;
+  if (tg && (tg.platform === "android" || tg.platform === "ios")) {
+    document.body.classList.add("telegram-mobile");
+    try {
+      init();
+    } catch {}
+  }
+}
+
+// ---- Web3Modal ----
+const projectId = "0e067b77e88bde54e08e5d0a94da2cc6";
 
 createWeb3Modal({
-  wagmiConfig: wagmiConfig,
+  wagmiConfig,
   projectId,
-  enableAnalytics: true, // Optional
-  themeMode: 'dark'     // Fits the Telegram dark mode well
+  enableAnalytics: true,
+  themeMode: "dark",
 });
 
-window.addEventListener("open-web3modal", () => {
-  const btn = document.querySelector("w3m-button") as any;
-  btn?.click?.();
-});
+// ---- Telegram-safe WalletConnect escape ----
+if (typeof window !== "undefined") {
+  const tg = (window as any).Telegram?.WebApp;
 
+  if (tg && (tg.platform === "android" || tg.platform === "ios")) {
+    const originalOpen = window.open;
 
+    window.open = (url?: string | URL, target?: string) => {
+      const str = typeof url === "string" ? url : url?.toString();
+
+      // Intercept WalletConnect-related links ONLY
+      if (
+        str &&
+        (str.startsWith("wc:") ||
+          str.includes("walletconnect") ||
+          str.includes("link.walletconnect"))
+      ) {
+        openLink(str, { tryBrowser: true });
+        return null;
+      }
+
+      return originalOpen(url as any, target);
+    };
+  }
+}
+
+// ---- React render ----
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        {/* Your App now has access to both Wagmi hooks and the Web3Modal */}
         <App />
       </QueryClientProvider>
     </WagmiProvider>
