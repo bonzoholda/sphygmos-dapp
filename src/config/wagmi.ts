@@ -12,7 +12,7 @@ const metadata = {
   url: "https://smostoken.netlify.app",
   icons: ["https://smostoken.netlify.app/logo.png"],
   redirect: {
-    native: "https://smostoken.netlify.app", // Fallback for deep links
+    native: "https://t.me/SphygmosBot/SMOS_miner", // Fallback for deep links
     universal: "https://smostoken.netlify.app"
   }
 };
