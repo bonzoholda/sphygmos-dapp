@@ -1,32 +1,49 @@
 import { init, openLink } from '@telegram-apps/sdk-react';
 
-// Check if we are inside Telegram before running any SDK code
 const isTelegram = typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.platform !== 'unknown';
 
 if (isTelegram) {
   try {
     init();
     
-    // Patch window.open ONLY if in Telegram
     const originalOpen = window.open;
     window.open = (url: string | URL | undefined, target?: string, features?: string) => {
       const urlString = url?.toString() || '';
 
-      if (urlString.startsWith('metamask:') || urlString.startsWith('trust:') || urlString.startsWith('tpouter:')) {
+      // Detection for WalletConnect and major wallet schemes
+      const isWalletScheme = /^(metamask:|trust:|tpouter:|wc:|imtoken:|bitkeep:)/i.test(urlString);
+
+      if (isWalletScheme) {
         let finalUrl = urlString;
+
+        // Force convert to Universal Links to bypass ERR_UNKNOWN_URL_SCHEME
         if (urlString.startsWith('metamask:')) {
           finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
         } else if (urlString.startsWith('trust:')) {
           finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
+        } else if (urlString.startsWith('tpouter:')) {
+          // TokenPocket specific universal bridge
+          finalUrl = `https://tokenpocket.github.io/tp-url-common/index.html?url=${encodeURIComponent(urlString)}`;
         }
 
-        openLink(finalUrl);
-        return null;
+        // Use the Telegram Bridge to "jump" out of the WebView
+        // 'try_browser' forces it to bypass the internal restricted browser
+        try {
+          openLink(finalUrl, { tryBrowser: 'chrome' } as any);
+          return null; 
+        } catch (e) {
+          // Fallback if SDK fails
+          const anchor = document.createElement('a');
+          anchor.href = finalUrl;
+          anchor.target = '_blank';
+          anchor.click();
+          return null;
+        }
       }
       return originalOpen(url, target, features);
     };
   } catch (e) {
-    console.warn("Telegram SDK initialization failed, continuing in web mode", e);
+    console.warn("TMA SDK Init Failed");
   }
 }
 
