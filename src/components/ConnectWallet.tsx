@@ -1,66 +1,33 @@
-import React from 'react';
-import { openLink } from '@telegram-apps/sdk-react';
-// import { useConnectModal } from '@rainbow-me/rainbowkit'; // example
-// import { useAccount } from 'wagmi'; // example
+import React, { useMemo } from "react";
+import { useAccount } from "wagmi";
+import { Web3Button } from "@web3modal/wagmi/react";
 
-// ---- Telegram detection ----
-const isTelegram = () => {
-  if (typeof window === 'undefined') return false;
-  return Boolean((window as any).Telegram?.WebApp);
-};
+export const ConnectWallet: React.FC = () => {
+  const { isConnected } = useAccount();
 
-const openTokenPocket = () => {
-  const tpDeepLink =
-    'tpoutside://pull.activity?param=' +
-    encodeURIComponent(
-      JSON.stringify({
-        protocol: 'TokenPocket',
-        version: '1.0',
-        action: 'login', // wakes TokenPocket and opens dapp browser
-      })
-    );
+  // Detect Telegram WebApp (mobile or web)
+  const isTelegram = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean((window as any).Telegram?.WebApp);
+  }, []);
 
-  try {
-    // Escapes Telegram WebView → Android intent resolver
-    openLink(tpDeepLink, { tryBrowser: 'chrome' } as any);
-  } catch (err) {
-    // Fallback if deep link fails
-    window.location.href = 'https://tokenpocket.pro';
+  /**
+   * RULE:
+   * - Inside Telegram → HIDE normal Connect Wallet
+   * - Outside Telegram → Show normal WalletConnect button
+   */
+  if (isTelegram) {
+    return null;
   }
-};
-
-const ConnectWallet: React.FC = () => {
-  const insideTelegram = isTelegram();
-
-  // const { openConnectModal } = useConnectModal(); // if using RainbowKit
-  // const { isConnected } = useAccount();
 
   return (
-    <div className="w-full space-y-3">
-      {/* Telegram-only TokenPocket button */}
-      {insideTelegram && (
-        <button
-          onClick={openTokenPocket}
-          className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95"
-        >
-          <img
-            src="https://www.tokenpocket.pro/favicon.ico"
-            className="w-6 h-6 rounded-full"
-            alt="TokenPocket"
-          />
-          Open in TokenPocket
-        </button>
+    <div className="w-full">
+      {!isConnected && (
+        <Web3Button
+          label="Connect Wallet"
+          balance="hide"
+        />
       )}
-
-      {/* Normal wallet connect (always available) */}
-      <button
-        // onClick={openConnectModal}
-        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95"
-      >
-        Connect Wallet
-      </button>
     </div>
   );
 };
-
-export { ConnectWallet };
