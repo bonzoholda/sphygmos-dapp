@@ -6,6 +6,22 @@ import './index.css'
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { wagmiConfig } from './config/wagmi'
+import { createWeb3Modal } from '@web3modal/wagmi/react'
+
+const projectId = '0e067b77e88bde54e08e5d0a94da2cc6'
+
+createWeb3Modal({
+  wagmiConfig,
+  projectId,
+  enableAnalytics: true,
+  themeMode: 'dark',
+
+  // 🔑 CRITICAL FOR TELEGRAM
+  featuredWalletIds: [],
+  enableExplorer: false,
+  mobileWallets: [],        // hard-disable deeplinks
+  enableInjected: false     // prevent metamask://
+})
 
 const queryClient = new QueryClient()
 
