@@ -1,7 +1,6 @@
 import { useAccount, useDisconnect } from "wagmi";
 
-// Telegram mobile detection
-function getTelegramApp() {
+function getTelegram() {
   if (typeof window === "undefined") return null;
   return (window as any).Telegram?.WebApp ?? null;
 }
@@ -22,19 +21,19 @@ export function ConnectWallet() {
   }
 
   const handleConnect = () => {
-    const tg = getTelegramApp();
+    const tg = getTelegram();
 
-    // ✅ TELEGRAM MOBILE (escape WebView)
     if (tg && (tg.platform === "android" || tg.platform === "ios")) {
       tg.openLink(
-        "https://walletconnect.com/explorer?type=wallet",
+        "https://link.walletconnect.com/",
         { try_browser: true }
       );
       return;
     }
 
-    // ✅ NON-TELEGRAM (fallback to Web3Modal)
-    window.dispatchEvent(new CustomEvent("open-web3modal"));
+    // normal web behavior
+    const btn = document.querySelector("w3m-button") as any;
+    btn?.click?.();
   };
 
   return (
