@@ -1,13 +1,10 @@
 import { useAccount, useDisconnect } from "wagmi";
-
-function getTelegram() {
-  if (typeof window === "undefined") return null;
-  return (window as any).Telegram?.WebApp ?? null;
-}
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { open } = useWeb3Modal();
 
   if (isConnected) {
     return (
@@ -20,25 +17,9 @@ export function ConnectWallet() {
     );
   }
 
-  const handleConnect = () => {
-    const tg = getTelegram();
-
-    if (tg && (tg.platform === "android" || tg.platform === "ios")) {
-      tg.openLink(
-        "https://link.walletconnect.com/",
-        { try_browser: true }
-      );
-      return;
-    }
-
-    // normal web behavior
-    const btn = document.querySelector("w3m-button") as any;
-    btn?.click?.();
-  };
-
   return (
     <button
-      onClick={handleConnect}
+      onClick={() => open()}
       className="btn wallet-btn"
     >
       Connect Wallet
