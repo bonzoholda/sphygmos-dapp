@@ -1,19 +1,33 @@
-// FIX for Telegram Mobile Deep Linking (ERR_UNKNOWN_URL_SCHEME)
-if (window.parent !== window) { // Check if inside an iframe (like Telegram)
-  const originalOpen = window.open;
-  window.open = function (url, target, features) {
-    const tg = (window as any).Telegram?.WebApp;
-    
-    // If the URL is a deep link (metamask://, wc:, etc.)
-    if (url && (url.startsWith('metamask:') || url.startsWith('trust:') || url.startsWith('wc:') || url.startsWith('tpouter:'))) {
-      if (tg && tg.openLink) {
-        tg.openLink(url); // Tell Telegram to open it externally
-        return null;
-      }
+import { init, utils } from '@telegram-apps/sdk-react';
+
+// 1. Initialize the SDK
+init();
+
+// 2. The Proven Patch for Mobile ERR_UNKNOWN_URL_SCHEME
+const originalOpen = window.open;
+window.open = (url: string | URL | undefined, target?: string, features?: string) => {
+  const urlString = url?.toString() || '';
+
+  // Intercept common wallet schemes
+  if (urlString.startsWith('metamask:') || urlString.startsWith('trust:') || urlString.startsWith('tpouter:')) {
+    let finalUrl = urlString;
+
+    // Transform deep links into Universal Links (Web-compatible)
+    if (urlString.startsWith('metamask:')) {
+      finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
+    } else if (urlString.startsWith('trust:')) {
+      finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
     }
-    return originalOpen.call(window, url, target, features);
-  };
-}
+
+    // Use the native Telegram SDK to break out of the webview
+    if (utils.openLink.isAvailable()) {
+      utils.openLink(finalUrl);
+      return null; 
+    }
+  }
+
+  return originalOpen(url, target, features);
+};
 
 import React from "react";
 import ReactDOM from "react-dom/client";
