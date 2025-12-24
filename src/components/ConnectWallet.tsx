@@ -63,4 +63,4 @@ const ConnectWallet: React.FC = () => {
   );
 };
 
-export default ConnectWallet;
+export { ConnectWallet };
