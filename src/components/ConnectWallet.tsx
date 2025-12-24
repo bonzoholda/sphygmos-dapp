@@ -1,10 +1,23 @@
-import { useAccount, useDisconnect } from "wagmi";
-import { useWeb3Modal } from "@web3modal/wagmi/react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
+  const { connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { open } = useWeb3Modal();
+
+  const handleConnect = () => {
+    const tg = (window as any).Telegram?.WebApp;
+
+    // ✅ Telegram Mobile → open external browser
+    if (tg && (tg.platform === "android" || tg.platform === "ios")) {
+      tg.openLink("https://smostoken.netlify.app", { tryBrowser: true });
+      return;
+    }
+
+    // ✅ Normal browser connect
+    connect({ connector: injected() });
+  };
 
   if (isConnected) {
     return (
@@ -19,10 +32,11 @@ export function ConnectWallet() {
 
   return (
     <button
-      onClick={() => open()}
+      onClick={handleConnect}
       className="btn wallet-btn"
+      disabled={isPending}
     >
-      Connect Wallet
+      {isPending ? "Connecting…" : "Connect Wallet"}
     </button>
   );
 }
