@@ -16,7 +16,15 @@ function initTelegram() {
   }
 }
 
-initTelegram()
+if (isTelegram) {
+  try {
+    initTelegram()
+  } catch (e) {
+    console.warn("Telegram SDK initialization failed, continuing in web mode", e);
+  }
+}
+
+
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
