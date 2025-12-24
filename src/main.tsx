@@ -15,11 +15,16 @@ if (typeof window !== "undefined") {
   (window as any).global = window;
 
   const tg = (window as any).Telegram?.WebApp;
-  if (tg && (tg.platform === "android" || tg.platform === "ios")) {
-    document.body.classList.add("telegram-mobile");
+  // Initialize only if we are in a Telegram environment
+  if (tg && tg.platform !== "unknown") {
+    if (tg.platform === "android" || tg.platform === "ios") {
+      document.body.classList.add("telegram-mobile");
+    }
     try {
       init();
-    } catch {}
+    } catch (e) {
+      console.warn("Telegram SDK Init failed", e);
+    }
   }
 }
 
@@ -43,15 +48,24 @@ if (typeof window !== "undefined") {
     window.open = (url?: string | URL, target?: string) => {
       const str = typeof url === "string" ? url : url?.toString();
 
-      // Intercept WalletConnect-related links ONLY
-      if (
-        str &&
-        (str.startsWith("wc:") ||
-          str.includes("walletconnect") ||
-          str.includes("link.walletconnect"))
-      ) {
-        openLink(str, { tryBrowser: true });
-        return null;
+      // 1. Detect WalletConnect OR direct wallet schemes (metamask:, trust:, tpouter:, etc.)
+      const isWalletLink = str && (
+        str.startsWith("wc:") || 
+        str.includes("walletconnect") || 
+        str.includes("link.walletconnect") ||
+        /^(metamask:|trust:|tpouter:|bitkeep:|imtoken:)/i.test(str)
+      );
+
+      if (isWalletLink) {
+        // 2. Escape the WebView using the Telegram Native Bridge
+        // tryBrowser: 'chrome' is the industry proven flag to force Android app-switching
+        try {
+          openLink(str, { tryBrowser: 'chrome' } as any);
+          return null; 
+        } catch (err) {
+          console.error("Telegram openLink failed, using fallback", err);
+          return originalOpen(str, "_blank");
+        }
       }
 
       return originalOpen(url as any, target);
