@@ -1,17 +1,13 @@
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected, walletConnect } from "wagmi/connectors";
+import { useAccount, useDisconnect } from "wagmi";
 
-// Telegram mobile detector (local, safe)
-function isTelegramMobile(): boolean {
-  if (typeof window === "undefined") return false;
-  const tg = (window as any).Telegram?.WebApp;
-  if (!tg) return false;
-  return tg.platform === "android" || tg.platform === "ios";
+// Telegram mobile detection
+function getTelegramApp() {
+  if (typeof window === "undefined") return null;
+  return (window as any).Telegram?.WebApp ?? null;
 }
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
-  const { connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
 
   if (isConnected) {
@@ -26,27 +22,27 @@ export function ConnectWallet() {
   }
 
   const handleConnect = () => {
-    if (isTelegramMobile()) {
-      // ✅ WalletConnect works in Telegram mobile
-      connect({
-        connector: walletConnect({
-          projectId: "0e067b77e88bde54e08e5d0a94da2cc6"
-        })
-      });
+    const tg = getTelegramApp();
+
+    // ✅ TELEGRAM MOBILE (escape WebView)
+    if (tg && (tg.platform === "android" || tg.platform === "ios")) {
+      tg.openLink(
+        "https://walletconnect.com/explorer?type=wallet",
+        { try_browser: true }
+      );
       return;
     }
 
-    // ✅ Normal browsers
-    connect({ connector: injected() });
+    // ✅ NON-TELEGRAM (fallback to Web3Modal)
+    window.dispatchEvent(new CustomEvent("open-web3modal"));
   };
 
   return (
     <button
       onClick={handleConnect}
       className="btn wallet-btn"
-      disabled={isPending}
     >
-      {isPending ? "Connecting…" : "Connect Wallet"}
+      Connect Wallet
     </button>
   );
 }
