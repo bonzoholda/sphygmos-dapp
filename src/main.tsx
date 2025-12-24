@@ -1,4 +1,12 @@
 (window as any).global = window;
+
+if (typeof window !== "undefined") {
+  const tg = (window as any).Telegram?.WebApp;
+  if (tg && (tg.platform === "android" || tg.platform === "ios")) {
+    document.body.classList.add("telegram-mobile");
+  }
+}
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
