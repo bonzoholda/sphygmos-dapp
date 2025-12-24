@@ -5,7 +5,7 @@ import { bscTestnet } from "wagmi/chains";
 // Project ID
 export const projectId = "0e067b77e88bde54e08e5d0a94da2cc6";
 
-// Metadata
+// Metadata - The 'url' here MUST match your Telegram Bot link or Netlify URL exactly
 const metadata = {
   name: "Sphygmos",
   description: "Sphygmos mining dApp",
@@ -19,13 +19,15 @@ export const wagmiConfig = defaultWagmiConfig({
   projectId,
   metadata,
 
-  // 🔑 CRITICAL FOR TELEGRAM MOBILE
+  // 🔑 THE FIX FOR TOKENPOCKET & TELEGRAM
   enableWalletConnect: true,
   walletConnectOptions: {
-    showQrModal: false, // 🚨 THIS FIXES TELEGRAM MOBILE
+    showQrModal: false, 
   },
 
-  auth: {
-    email: false,
-  },
+  // This ensures the wallet knows where to "send" the user back to
+  // For Telegram, we often need to force the universal link redirect
+  enableInjected: false, // 🚨 Disable injected on mobile to force WalletConnect
+  enableEIP6963: true,
+  enableCoinbaseWallet: false, 
 });
