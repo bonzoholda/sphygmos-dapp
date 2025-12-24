@@ -1,3 +1,23 @@
+import { init } from '@telegram-apps/sdk-react'
+
+function initTelegram() {
+  try {
+    if (
+      typeof window !== 'undefined' &&
+      window.Telegram?.WebApp &&
+      ['android', 'ios', 'tdesktop'].includes(window.Telegram.WebApp.platform)
+    ) {
+      init()
+      window.Telegram.WebApp.ready()
+      window.Telegram.WebApp.expand()
+    }
+  } catch (e) {
+    console.warn('Telegram init skipped:', e)
+  }
+}
+
+initTelegram()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
