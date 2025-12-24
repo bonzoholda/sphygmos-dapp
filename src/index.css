@@ -19,6 +19,11 @@ body.telegram-mobile w3m-button {
   display: none !important;
 }
 
+w3m-button {
+  display: none !important;
+}
+
+
 /* ===============================
    BUTTONS
 ================================ */
