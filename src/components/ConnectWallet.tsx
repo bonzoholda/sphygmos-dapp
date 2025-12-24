@@ -1,43 +1,29 @@
-import React, { useMemo } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 
-export const ConnectWallet: React.FC = () => {
+export function ConnectWallet() {
   const { address, isConnected } = useAccount();
+  const { connect, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
 
-  // Detect Telegram WebApp
-  const isTelegram = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return Boolean((window as any).Telegram?.WebApp);
-  }, []);
-
-  /**
-   * RULE:
-   * - Telegram → hide normal button (blue Telegram button handles it)
-   * - Web / Mobile browser → show normal connect button
-   */
-  if (isTelegram) {
-    return null;
-  }
-
-  const openModal = () => {
-    // Web3Modal v3 exposes this event
-    window.dispatchEvent(new Event("open-web3modal"));
-  };
-
-  if (isConnected && address) {
+  if (isConnected) {
     return (
-      <button className="btn btn-outline wallet-btn cursor-default">
-        {address.slice(0, 6)}…{address.slice(-4)}
+      <button
+        onClick={() => disconnect()}
+        className="btn btn-outline wallet-btn"
+      >
+        {address?.slice(0, 6)}…{address?.slice(-4)}
       </button>
     );
   }
 
   return (
     <button
-      onClick={openModal}
+      onClick={() => connect({ connector: injected() })}
       className="btn wallet-btn"
+      disabled={isPending}
     >
-      Connect Wallet
+      {isPending ? "Connecting…" : "Connect Wallet"}
     </button>
   );
-};
+}
