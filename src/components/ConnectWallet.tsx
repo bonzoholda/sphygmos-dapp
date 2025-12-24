@@ -1,5 +1,13 @@
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { injected, walletConnect } from "wagmi/connectors";
+
+// Telegram mobile detector (local, safe)
+function isTelegramMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  const tg = (window as any).Telegram?.WebApp;
+  if (!tg) return false;
+  return tg.platform === "android" || tg.platform === "ios";
+}
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
@@ -17,9 +25,24 @@ export function ConnectWallet() {
     );
   }
 
+  const handleConnect = () => {
+    if (isTelegramMobile()) {
+      // ✅ WalletConnect works in Telegram mobile
+      connect({
+        connector: walletConnect({
+          projectId: "0e067b77e88bde54e08e5d0a94da2cc6"
+        })
+      });
+      return;
+    }
+
+    // ✅ Normal browsers
+    connect({ connector: injected() });
+  };
+
   return (
     <button
-      onClick={() => connect({ connector: injected() })}
+      onClick={handleConnect}
       className="btn wallet-btn"
       disabled={isPending}
     >
