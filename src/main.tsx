@@ -1,4 +1,4 @@
-import { init, utils } from '@telegram-apps/sdk-react';
+import { init, openLink } from '@telegram-apps/sdk-react';
 
 // 1. Initialize the SDK
 init();
@@ -17,14 +17,14 @@ window.open = (url: string | URL | undefined, target?: string, features?: string
       finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
     } else if (urlString.startsWith('trust:')) {
       finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
-    } else if (urlString.startsWith('tpouter:')) {
-      finalUrl = urlString.replace('tpouter:', 'https://tokenpocket.pro/');      
     }
 
-    // Use the native Telegram SDK to break out of the webview
-    if (utils.openLink.isAvailable()) {
-      utils.openLink(finalUrl);
+    // Use openLink directly (it's now a direct export)
+    try {
+      openLink(finalUrl);
       return null; 
+    } catch (e) {
+      console.error("Telegram openLink failed, falling back", e);
     }
   }
 
