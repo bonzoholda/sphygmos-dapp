@@ -8,9 +8,13 @@ export const projectId = '0e067b77e88bde54e08e5d0a94da2cc6';
 // 2. Create metadata object
 const metadata = {
   name: "Sphygmos",
-  description: "Sphygmos dApp on BSC Testnet",
-  url: "https://smostoken.netlify.app", // Origin must match your Netlify domain
+  description: "Sphygmos dApp",
+  url: "https://smostoken.netlify.app",
   icons: ["https://smostoken.netlify.app/logo.png"],
+  redirect: {
+    native: "https://smostoken.netlify.app", // Fallback for deep links
+    universal: "https://smostoken.netlify.app"
+  }
 };
 
 // 3. Create the config using defaultWagmiConfig
