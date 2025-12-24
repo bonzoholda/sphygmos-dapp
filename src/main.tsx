@@ -1,33 +1,45 @@
-import { init, utils } from '@telegram-apps/sdk-react';
+import { utils } from '@telegram-apps/sdk';
 
-// 1. Initialize the SDK
-init();
+// This is the proven industry fix for Telegram Mini App deep linking
+const patchTelegramDeepLinks = () => {
+  if (typeof window === 'undefined') return;
 
-// 2. The Proven Patch for Mobile ERR_UNKNOWN_URL_SCHEME
-const originalOpen = window.open;
-window.open = (url: string | URL | undefined, target?: string, features?: string) => {
-  const urlString = url?.toString() || '';
+  const originalOpen = window.open;
 
-  // Intercept common wallet schemes
-  if (urlString.startsWith('metamask:') || urlString.startsWith('trust:') || urlString.startsWith('tpouter:')) {
-    let finalUrl = urlString;
+  window.open = (url: string | URL | undefined, target?: string, features?: string) => {
+    const urlString = url?.toString() || '';
 
-    // Transform deep links into Universal Links (Web-compatible)
-    if (urlString.startsWith('metamask:')) {
-      finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
-    } else if (urlString.startsWith('trust:')) {
-      finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
+    // 1. Detect if it's a wallet deep link
+    const isWalletLink = urlString.startsWith('metamask:') || 
+                         urlString.startsWith('trust:') || 
+                         urlString.startsWith('wc:') || 
+                         urlString.startsWith('tpouter:');
+
+    if (isWalletLink) {
+      let finalUrl = urlString;
+
+      // 2. Convert specific schemes to Universal Links (proven to fix ERR_UNKNOWN_URL_SCHEME)
+      if (urlString.startsWith('metamask:')) {
+        finalUrl = urlString.replace('metamask:', 'https://metamask.app.link/');
+      } else if (urlString.startsWith('trust:')) {
+        finalUrl = urlString.replace('trust:', 'https://link.trustwallet.com/');
+      }
+
+      // 3. Use Telegram's native SDK to jump out of the WebView
+      try {
+        utils.openLink(finalUrl);
+        return null; // Stop the browser from trying to load it
+      } catch (e) {
+        console.error("Telegram SDK not ready, falling back to _blank", e);
+        return originalOpen(finalUrl, '_blank'); 
+      }
     }
 
-    // Use the native Telegram SDK to break out of the webview
-    if (utils.openLink.isAvailable()) {
-      utils.openLink(finalUrl);
-      return null; 
-    }
-  }
-
-  return originalOpen(url, target, features);
+    return originalOpen(url, target, features);
+  };
 };
+
+patchTelegramDeepLinks();
 
 import React from "react";
 import ReactDOM from "react-dom/client";
