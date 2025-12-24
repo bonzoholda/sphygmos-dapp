@@ -1,70 +1,66 @@
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
+import React from 'react';
+import { openLink } from '@telegram-apps/sdk-react';
+// import { useConnectModal } from '@rainbow-me/rainbowkit'; // example
+// import { useAccount } from 'wagmi'; // example
 
-const DAPP_URL = "https://smostoken.netlify.app";
+// ---- Telegram detection ----
+const isTelegram = () => {
+  if (typeof window === 'undefined') return false;
+  return Boolean((window as any).Telegram?.WebApp);
+};
 
-export function ConnectWallet() {
-  const { address, isConnected } = useAccount();
-  const { connect, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
-
-  const isTelegram =
-    typeof window !== "undefined" &&
-    (window as any).Telegram?.WebApp;
-
-  // TokenPocket universal link (BEST supported)
-  const openInTokenPocket = () => {
-    const encoded = encodeURIComponent(DAPP_URL);
-    const tpLink =
-      `https://tokenpocket.github.io/tp-url-common/index.html?url=${encoded}`;
-
-    const tg = (window as any).Telegram?.WebApp;
-
-    if (tg) {
-      tg.openLink(tpLink, { tryBrowser: true });
-    } else {
-      window.location.href = tpLink;
-    }
-  };
-
-  // ─────────────────────────────────────
-  // CONNECTED STATE
-  // ─────────────────────────────────────
-  if (isConnected) {
-    return (
-      <button
-        onClick={() => disconnect()}
-        className="btn btn-outline wallet-btn"
-      >
-        {address?.slice(0, 6)}…{address?.slice(-4)}
-      </button>
+const openTokenPocket = () => {
+  const tpDeepLink =
+    'tpoutside://pull.activity?param=' +
+    encodeURIComponent(
+      JSON.stringify({
+        protocol: 'TokenPocket',
+        version: '1.0',
+        action: 'login', // wakes TokenPocket and opens dapp browser
+      })
     );
-  }
 
-  // ─────────────────────────────────────
-  // TELEGRAM STATE → OPEN TOKENPOCKET
-  // ─────────────────────────────────────
-  if (isTelegram) {
-    return (
-      <button
-        onClick={openInTokenPocket}
-        className="btn wallet-btn bg-green-600 hover:bg-green-700"
-      >
-        🟢 Open in TokenPocket
-      </button>
-    );
+  try {
+    // Escapes Telegram WebView → Android intent resolver
+    openLink(tpDeepLink, { tryBrowser: 'chrome' } as any);
+  } catch (err) {
+    // Fallback if deep link fails
+    window.location.href = 'https://tokenpocket.pro';
   }
+};
 
-  // ─────────────────────────────────────
-  // NORMAL WEB → INJECTED WALLET
-  // ─────────────────────────────────────
+const ConnectWallet: React.FC = () => {
+  const insideTelegram = isTelegram();
+
+  // const { openConnectModal } = useConnectModal(); // if using RainbowKit
+  // const { isConnected } = useAccount();
+
   return (
-    <button
-      onClick={() => connect({ connector: injected() })}
-      className="btn wallet-btn"
-      disabled={isPending}
-    >
-      {isPending ? "Connecting…" : "Connect Wallet"}
-    </button>
+    <div className="w-full space-y-3">
+      {/* Telegram-only TokenPocket button */}
+      {insideTelegram && (
+        <button
+          onClick={openTokenPocket}
+          className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95"
+        >
+          <img
+            src="https://www.tokenpocket.pro/favicon.ico"
+            className="w-6 h-6 rounded-full"
+            alt="TokenPocket"
+          />
+          Open in TokenPocket
+        </button>
+      )}
+
+      {/* Normal wallet connect (always available) */}
+      <button
+        // onClick={openConnectModal}
+        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95"
+      >
+        Connect Wallet
+      </button>
+    </div>
   );
-}
+};
+
+export default ConnectWallet;
