@@ -1,25 +1,31 @@
 import { http, createConfig } from "wagmi";
-import { defaultWagmiConfig } from '@web3modal/wagmi/react/config'
+import { defaultWagmiConfig } from "@web3modal/wagmi/react/config";
 import { bscTestnet } from "wagmi/chains";
 
-// 1. Get ProjectID from https://cloud.reown.com/
-export const projectId = '0e067b77e88bde54e08e5d0a94da2cc6'; 
+// Project ID
+export const projectId = "0e067b77e88bde54e08e5d0a94da2cc6";
 
-// 2. Create metadata object
+// Metadata
 const metadata = {
   name: "Sphygmos",
-  description: "Sphygmos dApp on BSC Testnet",
-  url: "https://smostoken.netlify.app", // Origin must match your Netlify domain
+  description: "Sphygmos mining dApp",
+  url: "https://smostoken.netlify.app",
   icons: ["https://smostoken.netlify.app/logo.png"],
 };
 
-// 3. Create the config using defaultWagmiConfig
+// ✅ Telegram-safe wagmi config
 export const wagmiConfig = defaultWagmiConfig({
   chains: [bscTestnet],
   projectId,
   metadata,
-  // This replaces your manual 'transports' setup automatically
+
+  // 🔑 CRITICAL FOR TELEGRAM MOBILE
+  enableWalletConnect: true,
+  walletConnectOptions: {
+    showQrModal: false, // 🚨 THIS FIXES TELEGRAM MOBILE
+  },
+
   auth: {
-    email: false, // Set to true if you want social logins later
-  }
+    email: false,
+  },
 });
