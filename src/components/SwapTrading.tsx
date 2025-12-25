@@ -10,9 +10,9 @@ import { parseUnits, formatUnits } from "viem";
 import { TokenApprovalGuard } from "./TokenApprovalGuard";
 import { TxStatus } from "./TxStatus";
 
-const ROUTER_ADDRESS = "0xD99D1c33F9fC3444f8101754aBC46c52416550D1";
-const USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD";
-const SMOS_ADDRESS = "0x90a874DEb82F0832f4ef5279F1902748e634b83e";
+const ROUTER_ADDRESS = import.meta.env.VITE_ROUTER_ADDRESS as `0x${string}` | undefined;
+const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS as `0x${string}` | undefined;
+const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}` | undefined;
 
 const ROUTER_ABI = [
   {
