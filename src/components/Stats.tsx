@@ -7,6 +7,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { fmt } from "../utils/format";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
+import { useController } from "../hooks/useController"; // Import your custom hook
 
 const CONTROLLER_ADDRESS = import.meta.env
   .VITE_CONTROLLER_ADDRESS as `0x${string}`;
@@ -30,21 +31,29 @@ function formatLockTime(unlockTs: bigint) {
   const minutes = Math.floor((diff % 3600) / 60);
 
   return {
-    status: `Locked ${days
+    status: `Locked ${days.toString().padStart(2, "0")}d:${hours
       .toString()
-      .padStart(2, "0")}d:${hours
-      .toString()
-      .padStart(2, "0")}h:${minutes
-      .toString()
-      .padStart(2, "0")}m`,
+      .padStart(2, "0")}h:${minutes.toString().padStart(2, "0")}m`,
     locked: true,
   };
 }
 
 export default function Stats() {
   const { address } = useAccount();
-  const safeAddress =
-    address ?? "0x0000000000000000000000000000000000000000";
+  const safeAddress = address ?? "0x0000000000000000000000000000000000000000";
+
+  // 🔄 Sync with the global controller state
+  const { refetchAll } = useController();
+
+  /* ───────── Auto-Refresh Logic ───────── */
+  useEffect(() => {
+    if (!address) return;
+    // Poll the blockchain every 10 seconds to update pending rewards "live"
+    const interval = setInterval(() => {
+      refetchAll();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [address, refetchAll]);
 
   /* ───────── Contract Reads ───────── */
   const { data: userPU } = useReadContract({
@@ -52,7 +61,7 @@ export default function Stats() {
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "userPU",
     args: [safeAddress],
-    query: { enabled: !!address, refetchInterval: 10000 }, // Sync every 10s
+    query: { enabled: !!address },
   });
 
   const { data: stakedSMOS } = useReadContract({
@@ -60,7 +69,7 @@ export default function Stats() {
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "stakedSMOS",
     args: [safeAddress],
-    query: { enabled: !!address, refetchInterval: 10000 },
+    query: { enabled: !!address },
   });
 
   const { data: unlockTime } = useReadContract({
@@ -71,12 +80,10 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  // 💎 Refetching these prevents the "lag" after claiming in Actions.tsx
   const { data: accRewardPerPU } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "accRewardPerPU",
-    query: { refetchInterval: 10000 },
   });
 
   const { data: rewardDebt } = useReadContract({
@@ -84,25 +91,24 @@ export default function Stats() {
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "rewardDebt",
     args: [safeAddress],
-    query: { enabled: !!address, refetchInterval: 10000 },
+    query: { enabled: !!address },
   });
 
   /* ───────── Reward Calculation ───────── */
   const pendingRewards = useMemo(() => {
-    // If user has no PU, pending is always 0
-    if (!userPU || BigInt(userPU.toString()) === 0n) return 0n;
-    // If global data is missing, return 0 to avoid "Lag" flickers
-    if (!accRewardPerPU || rewardDebt === undefined) return 0n;
-    
+    if (!userPU || !accRewardPerPU || rewardDebt === undefined) return 0n;
+
     const pu = BigInt(userPU.toString());
     const acc = BigInt(accRewardPerPU.toString());
     const debt = BigInt(rewardDebt.toString());
+
+    if (pu === 0n) return 0n;
 
     const accumulated = (pu * acc) / BigInt(1e18);
     return accumulated > debt ? accumulated - debt : 0n;
   }, [userPU, accRewardPerPU, rewardDebt]);
 
-  /* ───────── Timer Tick ───────── */
+  /* ───────── Timer Tick (For UI Countdown) ───────── */
   const [, forceTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => forceTick((v) => v + 1), 60000);
@@ -116,10 +122,9 @@ export default function Stats() {
   }, [unlockTime]);
 
   const lockInfo = useMemo(() => formatLockTime(unlockTs), [unlockTs]);
-
   const hasStake = stakedSMOS !== undefined && BigInt(stakedSMOS) > 0n;
 
-  /* ───────── Unstake Logic ───────── */
+  /* ───────── Write Logic ───────── */
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
@@ -134,33 +139,35 @@ export default function Stats() {
     }
   };
 
+  // Watch for local transaction success to trigger refresh
+  const txWait = useWaitForTransactionReceipt({ hash });
+  useEffect(() => {
+    if (txWait.isSuccess) {
+      refetchAll();
+    }
+  }, [txWait.isSuccess, refetchAll]);
+
   return (
     <div className="space-y-4">
       {/* ─── Grid 1: Main Stats ─── */}
       <div className="grid grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <p className="panel-title">Your Power Units</p>
-          <p className="panel-value text-white">
-            {fmt(userPU)}
-          </p>
+          <p className="panel-value text-white">{fmt(userPU)}</p>
         </div>
 
         <div className="glass-card p-4">
           <p className="panel-title">Staked SMOS</p>
-          <p className="panel-value text-neon">
-            {fmt(stakedSMOS)}
-          </p>
+          <p className="panel-value text-neon">{fmt(stakedSMOS)}</p>
         </div>
       </div>
 
-      {/* ─── Simplified Reward Display (No Button) ─── */}
+      {/* ─── Rewards Display (Syncs with Actions.tsx via refetchAll) ─── */}
       <div className="glass-card p-4 border-l-4 border-green-500 bg-green-500/5">
         <p className="panel-title text-green-400">Claimable Rewards</p>
         <div className="flex items-baseline gap-2">
-          <p className="panel-value text-white">
-            {fmt(pendingRewards)}
-          </p>
-          <span className="text-[10px] text-green-500/60 font-mono tracking-tighter">SMOS</span>
+          <p className="panel-value text-white">{fmt(pendingRewards)}</p>
+          <span className="text-[10px] text-green-500/60 font-mono">SMOS</span>
         </div>
       </div>
 
@@ -168,10 +175,12 @@ export default function Stats() {
       <div className="glass-card p-4 space-y-4 border-t-2 border-yellow-500/20">
         <div className="flex justify-between items-end">
           <div>
-            <p className="panel-title">
-              Staked Lock Status
-            </p>
-            <p className={`text-lg font-mono font-bold ${lockInfo.locked ? "text-yellow-400" : "text-green-400"}`}>
+            <p className="panel-title">Staked Lock Status</p>
+            <p
+              className={`text-lg font-mono font-bold ${
+                lockInfo.locked ? "text-yellow-400" : "text-green-400"
+              }`}
+            >
               {hasStake ? lockInfo.status : "No Stake found"}
             </p>
           </div>
