@@ -7,7 +7,7 @@ import { TxStatus } from "./TxStatus";
 
 const controller = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
 const USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD";
-const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb";
+const SMOS_ADDRESS = "0x90a874DEb82F0832f4ef5279F1902748e634b83e";
 
 /* ───────── Wallet SVG ───────── */
 function WalletIcon() {
