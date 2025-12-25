@@ -6,8 +6,8 @@ import { useState, useEffect } from "react"; // Added useEffect
 import { TxStatus } from "./TxStatus";
 
 const controller = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
-const USDT_ADDRESS = import.meta.env.USDT_ADDRESS as `0x${string}` | undefined;
-const SMOS_ADDRESS = import.meta.env.SMOS_ADDRESS as `0x${string}` | undefined;
+const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS as `0x${string}` | undefined;
+const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}` | undefined;
 
 /* ───────── Wallet SVG ───────── */
 function WalletIcon() {
