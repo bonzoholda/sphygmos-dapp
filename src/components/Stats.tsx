@@ -63,7 +63,6 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  // 🔒 REAL LOCK SOURCE (FROM SOLIDITY)
   const { data: unlockTime } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
@@ -72,14 +71,42 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  /* ───────── Timer Tick (re-render every minute) ───────── */
+  // 💎 Added reads for reward calculation
+  const { data: accRewardPerPU } = useReadContract({
+    address: CONTROLLER_ADDRESS,
+    abi: SPHYGMOS_CONTROLLER_ABI,
+    functionName: "accRewardPerPU",
+  });
+
+  const { data: rewardDebt } = useReadContract({
+    address: CONTROLLER_ADDRESS,
+    abi: SPHYGMOS_CONTROLLER_ABI,
+    functionName: "rewardDebt",
+    args: [safeAddress],
+    query: { enabled: !!address },
+  });
+
+  /* ───────── Reward Calculation ───────── */
+  const pendingRewards = useMemo(() => {
+    if (!userPU || !accRewardPerPU || rewardDebt === undefined) return 0n;
+    
+    const pu = BigInt(userPU.toString());
+    const acc = BigInt(accRewardPerPU.toString());
+    const debt = BigInt(rewardDebt.toString());
+
+    // Formula: (userPU * accRewardPerPU / 1e18) - rewardDebt
+    const accumulated = (pu * acc) / BigInt(1e18);
+    return accumulated > debt ? accumulated - debt : 0n;
+  }, [userPU, accRewardPerPU, rewardDebt]);
+
+  /* ───────── Timer Tick ───────── */
   const [, forceTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => forceTick((v) => v + 1), 60000);
     return () => clearInterval(t);
   }, []);
 
-  /* ───────── Lock Status (Single Source of Truth) ───────── */
+  /* ───────── Lock Status ───────── */
   const unlockTs = useMemo(() => {
     if (!unlockTime) return 0n;
     return BigInt(unlockTime.toString());
@@ -93,7 +120,7 @@ export default function Stats() {
   const hasStake =
     stakedSMOS !== undefined && BigInt(stakedSMOS) > 0n;
 
-  /* ───────── Unstake Logic ───────── */
+  /* ───────── Write Logic ───────── */
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } =
     useWaitForTransactionReceipt({ hash });
@@ -103,8 +130,18 @@ export default function Stats() {
       writeContract({
         address: CONTROLLER_ADDRESS,
         abi: SPHYGMOS_CONTROLLER_ABI,
-        functionName: "unstakeSMOS", // <-- matches Solidity
+        functionName: "unstakeSMOS",
         args: [stakedSMOS],
+      });
+    }
+  };
+
+  const handleClaim = () => {
+    if (pendingRewards > 0n) {
+      writeContract({
+        address: CONTROLLER_ADDRESS,
+        abi: SPHYGMOS_CONTROLLER_ABI,
+        functionName: "claimMinerRewards",
       });
     }
   };
@@ -126,6 +163,27 @@ export default function Stats() {
             {fmt(stakedSMOS)}
           </p>
         </div>
+      </div>
+
+      {/* ─── NEW: Claimable Rewards Panel ─── */}
+      <div className="glass-card p-4 flex justify-between items-center border-l-4 border-green-500 bg-green-500/5">
+        <div>
+          <p className="panel-title text-green-400">Claimable SMOS</p>
+          <p className="panel-value text-white">
+            {fmt(pendingRewards)}
+          </p>
+        </div>
+        <button
+          onClick={handleClaim}
+          disabled={pendingRewards === 0n || isConfirming}
+          className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
+            pendingRewards > 0n
+              ? "bg-green-600 text-white hover:bg-green-500 shadow-lg shadow-green-900/40"
+              : "bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          Claim
+        </button>
       </div>
 
       {/* ─── Grid 2: Lock Status & Unstake ─── */}
