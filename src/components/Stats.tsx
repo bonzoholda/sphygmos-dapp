@@ -52,7 +52,7 @@ export default function Stats() {
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "userPU",
     args: [safeAddress],
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 10000 }, // Sync every 10s
   });
 
   const { data: stakedSMOS } = useReadContract({
@@ -60,7 +60,7 @@ export default function Stats() {
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "stakedSMOS",
     args: [safeAddress],
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 10000 },
   });
 
   const { data: unlockTime } = useReadContract({
@@ -71,11 +71,12 @@ export default function Stats() {
     query: { enabled: !!address },
   });
 
-  // 💎 Added reads for reward calculation
+  // 💎 Refetching these prevents the "lag" after claiming in Actions.tsx
   const { data: accRewardPerPU } = useReadContract({
     address: CONTROLLER_ADDRESS,
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "accRewardPerPU",
+    query: { refetchInterval: 10000 },
   });
 
   const { data: rewardDebt } = useReadContract({
@@ -83,18 +84,20 @@ export default function Stats() {
     abi: SPHYGMOS_CONTROLLER_ABI,
     functionName: "rewardDebt",
     args: [safeAddress],
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 10000 },
   });
 
   /* ───────── Reward Calculation ───────── */
   const pendingRewards = useMemo(() => {
-    if (!userPU || !accRewardPerPU || rewardDebt === undefined) return 0n;
+    // If user has no PU, pending is always 0
+    if (!userPU || BigInt(userPU.toString()) === 0n) return 0n;
+    // If global data is missing, return 0 to avoid "Lag" flickers
+    if (!accRewardPerPU || rewardDebt === undefined) return 0n;
     
     const pu = BigInt(userPU.toString());
     const acc = BigInt(accRewardPerPU.toString());
     const debt = BigInt(rewardDebt.toString());
 
-    // Formula: (userPU * accRewardPerPU / 1e18) - rewardDebt
     const accumulated = (pu * acc) / BigInt(1e18);
     return accumulated > debt ? accumulated - debt : 0n;
   }, [userPU, accRewardPerPU, rewardDebt]);
@@ -112,18 +115,13 @@ export default function Stats() {
     return BigInt(unlockTime.toString());
   }, [unlockTime]);
 
-  const lockInfo = useMemo(
-    () => formatLockTime(unlockTs),
-    [unlockTs]
-  );
+  const lockInfo = useMemo(() => formatLockTime(unlockTs), [unlockTs]);
 
-  const hasStake =
-    stakedSMOS !== undefined && BigInt(stakedSMOS) > 0n;
+  const hasStake = stakedSMOS !== undefined && BigInt(stakedSMOS) > 0n;
 
-  /* ───────── Write Logic ───────── */
+  /* ───────── Unstake Logic ───────── */
   const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming } =
-    useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
   const handleUnstake = () => {
     if (!lockInfo.locked && hasStake) {
@@ -132,16 +130,6 @@ export default function Stats() {
         abi: SPHYGMOS_CONTROLLER_ABI,
         functionName: "unstakeSMOS",
         args: [stakedSMOS],
-      });
-    }
-  };
-
-  const handleClaim = () => {
-    if (pendingRewards > 0n) {
-      writeContract({
-        address: CONTROLLER_ADDRESS,
-        abi: SPHYGMOS_CONTROLLER_ABI,
-        functionName: "claimMinerRewards",
       });
     }
   };
@@ -165,25 +153,15 @@ export default function Stats() {
         </div>
       </div>
 
-      {/* ─── NEW: Claimable Rewards Panel ─── */}
-      <div className="glass-card p-4 flex justify-between items-center border-l-4 border-green-500 bg-green-500/5">
-        <div>
-          <p className="panel-title text-green-400">Claimable SMOS</p>
+      {/* ─── Simplified Reward Display (No Button) ─── */}
+      <div className="glass-card p-4 border-l-4 border-green-500 bg-green-500/5">
+        <p className="panel-title text-green-400">Claimable Rewards</p>
+        <div className="flex items-baseline gap-2">
           <p className="panel-value text-white">
             {fmt(pendingRewards)}
           </p>
+          <span className="text-[10px] text-green-500/60 font-mono tracking-tighter">SMOS</span>
         </div>
-        <button
-          onClick={handleClaim}
-          disabled={pendingRewards === 0n || isConfirming}
-          className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
-            pendingRewards > 0n
-              ? "bg-green-600 text-white hover:bg-green-500 shadow-lg shadow-green-900/40"
-              : "bg-slate-800 text-slate-500 cursor-not-allowed"
-          }`}
-        >
-          Claim
-        </button>
       </div>
 
       {/* ─── Grid 2: Lock Status & Unstake ─── */}
@@ -193,16 +171,8 @@ export default function Stats() {
             <p className="panel-title">
               Staked Lock Status
             </p>
-            <p
-              className={`text-lg font-mono font-bold ${
-                lockInfo.locked
-                  ? "text-yellow-400"
-                  : "text-green-400"
-              }`}
-            >
-              {hasStake
-                ? lockInfo.status
-                : "No Stake found"}
+            <p className={`text-lg font-mono font-bold ${lockInfo.locked ? "text-yellow-400" : "text-green-400"}`}>
+              {hasStake ? lockInfo.status : "No Stake found"}
             </p>
           </div>
 
@@ -215,18 +185,14 @@ export default function Stats() {
 
         <button
           onClick={handleUnstake}
-          disabled={
-            lockInfo.locked || !hasStake || isConfirming
-          }
+          disabled={lockInfo.locked || !hasStake || isConfirming}
           className={`w-full py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
             lockInfo.locked || !hasStake
               ? "bg-slate-900 text-slate-600 cursor-not-allowed grayscale border border-white/5"
               : "bg-red-600 text-white hover:bg-red-700 shadow-lg active:scale-95 shadow-red-900/20"
           }`}
         >
-          {isConfirming
-            ? "Processing..."
-            : "Unstake SMOS"}
+          {isConfirming ? "Processing..." : "Unstake SMOS"}
         </button>
       </div>
     </div>
