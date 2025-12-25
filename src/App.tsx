@@ -18,7 +18,7 @@ import { SwapTrading } from "./components/SwapTrading";
  */
 const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
 const MOCK_USDT_ADDRESS = "0xd5210074786CfBE75b66FEC5D72Ae79020514afD" as `0x${string}`;
-const SMOS_ADDRESS = "0x88b711119C6591E7Dd1388EAAbBD8b9777d104Cb" as `0x${string}`;
+const SMOS_ADDRESS = "0x90a874DEb82F0832f4ef5279F1902748e634b83e" as `0x${string}`;
 
 export default function App() {
   const { minersPool, rewardPool, totalPU } = useController();
