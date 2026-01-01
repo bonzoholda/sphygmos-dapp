@@ -13,15 +13,17 @@ import { TxStatus } from "./TxStatus";
 const CONTROLLER_ADDRESS = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}`;
 
 function formatLockTime(unlockTs: bigint) {
-  if (unlockTs === 0n) return { status: "Not Staked", locked: false, ready: false };
+  if (!unlockTs || unlockTs === 0n) return { status: "Not Staked", locked: false, ready: false };
   const now = Math.floor(Date.now() / 1000);
   const diff = Number(unlockTs) - now;
+  
   if (diff <= 0) return { status: "Unlocked & Ready", locked: false, ready: true };
+  
   const days = Math.floor(diff / 86400);
   const hours = Math.floor((diff % 86400) / 3600);
   const minutes = Math.floor((diff % 3600) / 60);
   return {
-    status: `Locked ${days.toString().padStart(2, "0")}d:${hours.toString().padStart(2, "0")}h:${minutes.toString().padStart(2, "0")}m`,
+    status: `Locked ${days}d:${hours}h:${minutes}m`,
     locked: true,
     ready: false,
   };
@@ -30,8 +32,10 @@ function formatLockTime(unlockTs: bigint) {
 export default function Stats() {
   const { address } = useAccount();
   const { refetchAll } = useController();
-  const [withdrawTx, setWithdrawTx] = useState<`0x${string}`>();
-  const { writeContractAsync: withdraw, isPending: isWithdrawing } = useWriteContract();
+  const [unstakeTx, setUnstakeTx] = useState<`0x${string}`>();
+  
+  // Using useWriteContract for the unstakeSMOS function
+  const { writeContractAsync: unstakeSMOS, isPending: isUnstaking, error: writeError } = useWriteContract();
 
   const safeAddress = address ?? "0x0000000000000000000000000000000000000000";
 
@@ -46,25 +50,24 @@ export default function Stats() {
     query: { enabled: !!address, refetchInterval: 5000 },
   });
 
-  const [uPU, uStaked, uUnlock, gAcc, uDebt] = useMemo(() => {
-    return [
-      data?.[0]?.result as bigint | undefined,
-      data?.[1]?.result as bigint | undefined,
-      data?.[2]?.result as bigint | undefined,
-      data?.[3]?.result as bigint | undefined,
-      data?.[4]?.result as bigint | undefined,
-    ];
-  }, [data]);
+  const [uPU, uStaked, uUnlock, gAcc, uDebt] = useMemo(() => [
+    data?.[0]?.result as bigint | undefined,
+    data?.[1]?.result as bigint | undefined,
+    data?.[2]?.result as bigint | undefined,
+    data?.[3]?.result as bigint | undefined,
+    data?.[4]?.result as bigint | undefined,
+  ], [data]);
 
-  const withdrawWait = useWaitForTransactionReceipt({ hash: withdrawTx });
+  const unstakeWait = useWaitForTransactionReceipt({ hash: unstakeTx });
 
+  // Refresh data when transaction succeeds
   useEffect(() => {
-    if (withdrawWait.isSuccess) {
+    if (unstakeWait.isSuccess) {
       refetchAll();
       refetch();
-      setWithdrawTx(undefined);
+      setUnstakeTx(undefined);
     }
-  }, [withdrawWait.isSuccess, refetchAll, refetch]);
+  }, [unstakeWait.isSuccess, refetchAll, refetch]);
 
   const pendingRewards = useMemo(() => {
     if (!uPU || !gAcc || uDebt === undefined || uPU === 0n) return 0n;
@@ -77,14 +80,14 @@ export default function Stats() {
 
   const handleUnstake = async () => {
     try {
-      const hash = await withdraw({
+      const hash = await unstakeSMOS({
         address: CONTROLLER_ADDRESS,
         abi: SPHYGMOS_CONTROLLER_ABI,
-        functionName: "withdraw", // Assuming 'withdraw' is the function name in your ABI
+        functionName: "unstakeSMOS", // Fixed function name
       });
-      setWithdrawTx(hash);
-    } catch (err) {
-      console.error("Unstake failed", err);
+      setUnstakeTx(hash);
+    } catch (err: any) {
+      console.error("Unstake Error:", err);
     }
   };
 
@@ -120,24 +123,31 @@ export default function Stats() {
             </p>
           </div>
           
-          {/* THE UNSTAKE BUTTON */}
           {hasStake && lockInfo.ready && (
             <button 
-              className="btn btn-sm btn-primary animate-bounce-subtle"
-              disabled={isWithdrawing}
+              className="btn btn-sm bg-green-500 hover:bg-green-600 text-black border-none"
+              disabled={isUnstaking}
               onClick={handleUnstake}
             >
-              {isWithdrawing ? "Unstaking..." : "Unstake Now"}
+              {isUnstaking ? "Unstaking..." : "Unstake Now"}
             </button>
           )}
 
           {lockInfo.locked && (
-            <span className="text-[10px] bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 px-2 py-1 rounded animate-pulse">
+            <span className="text-[10px] bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 px-2 py-1 rounded">
               168H LOCK
             </span>
           )}
         </div>
-        <TxStatus hash={withdrawTx} />
+
+        {/* This error display is key—if simulation fails, the reason shows here */}
+        {writeError && (
+          <p className="text-red-500 text-[10px] font-mono mt-2 italic bg-red-500/10 p-2 rounded border border-red-500/20">
+            Error: {(writeError as any).shortMessage || "Check contract conditions."}
+          </p>
+        )}
+
+        <TxStatus hash={unstakeTx} />
       </div>
     </div>
   );
