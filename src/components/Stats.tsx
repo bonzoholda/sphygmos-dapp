@@ -121,7 +121,7 @@ export default function Stats() {
       <div className="glass-card p-4 border-l-4 border-green-500 bg-green-500/5">
         <p className="panel-title text-green-400">Claimable Rewards</p>
         <div className="flex items-baseline gap-2">
-          <p className="panel-value text-white">{fmt(((uPU ?? 0n) * (gAcc ?? 0n) / BigInt(1e18)) - (uDebt ?? 0n))}</p>
+          <p className="panel-value text-white">{fmt(((uPU ?? 0n) * (gAcc ?? 0n) / BigInt(1e18)) - (uDebt ?? 0n),18,8)}</p>
           <span className="text-[10px] text-green-500/60 font-mono">SMOS</span>
         </div>
       </div>
