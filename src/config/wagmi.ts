@@ -1,11 +1,11 @@
-import { http, createConfig } from "wagmi";
+import { http } from "wagmi";
 import { defaultWagmiConfig } from "@web3modal/wagmi/react/config";
-import { bscTestnet } from "wagmi/chains";
+import { bsc } from "wagmi/chains";
 
 // Project ID
 export const projectId = "0e067b77e88bde54e08e5d0a94da2cc6";
 
-// Metadata - The 'url' here MUST match your Telegram Bot link or Netlify URL exactly
+// Metadata - MUST match your production URL exactly
 const metadata = {
   name: "Sphygmos",
   description: "Sphygmos mining dApp",
@@ -13,21 +13,27 @@ const metadata = {
   icons: ["https://smostoken.netlify.app/logo.png"],
 };
 
-// ✅ Telegram-safe wagmi config
+// ✅ BNB Chain Mainnet wagmi config (Telegram-safe)
 export const wagmiConfig = defaultWagmiConfig({
-  chains: [bscTestnet],
+  chains: [bsc],
   projectId,
   metadata,
 
-  // 🔑 THE FIX FOR TOKENPOCKET & TELEGRAM
+  // WalletConnect is required for Telegram & TokenPocket
   enableWalletConnect: true,
   walletConnectOptions: {
-    showQrModal: false, 
+    showQrModal: false,
   },
 
-  // This ensures the wallet knows where to "send" the user back to
-  // For Telegram, we often need to force the universal link redirect
-  enableInjected: true, // 🚨 Disable injected on mobile to force WalletConnect
+  // Injected wallets (MetaMask browser, OKX, etc.)
+  enableInjected: true,
   enableEIP6963: true,
-  enableCoinbaseWallet: false, 
+
+  // Optional
+  enableCoinbaseWallet: false,
+
+  // Optional explicit transport (recommended for stability)
+  transports: {
+    [bsc.id]: http("https://bsc-dataseed.binance.org"),
+  },
 });
