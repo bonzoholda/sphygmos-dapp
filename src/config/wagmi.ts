@@ -13,7 +13,7 @@ const metadata = {
   icons: ["https://smostoken.netlify.app/logo.png"],
 };
 
-// ✅ BNB Chain Mainnet wagmi config (Telegram-safe)
+// ✅ Updated wagmi config with MEV Protection
 export const wagmiConfig = defaultWagmiConfig({
   chains: [bsc],
   projectId,
@@ -32,8 +32,8 @@ export const wagmiConfig = defaultWagmiConfig({
   // Optional
   enableCoinbaseWallet: false,
 
-  // Optional explicit transport (recommended for stability)
+  // Logic: Directs transactions to a private mempool to prevent sandwich attacks
   transports: {
-    [bsc.id]: http("https://bsc-dataseed.binance.org"),
+    [bsc.id]: http("https://bscrpc.pancakeswap.finance"),
   },
 });
