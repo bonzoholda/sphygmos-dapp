@@ -1,6 +1,6 @@
-import { http } from "wagmi";
-import { defaultWagmiConfig } from "@web3modal/wagmi/react/config";
+import { http, createConfig, fallback } from "wagmi";
 import { bsc } from "wagmi/chains";
+import { walletConnect, injected } from "wagmi/connectors";
 
 export const projectId = "0e067b77e88bde54e08e5d0a94da2cc6";
 
@@ -11,21 +11,24 @@ const metadata = {
   icons: ["https://smostoken.netlify.app/logo.png"],
 };
 
-export const wagmiConfig = defaultWagmiConfig({
+export const wagmiConfig = createConfig({
   chains: [bsc],
-  projectId,
-  metadata,
-  enableWalletConnect: true,
-  walletConnectOptions: {
-    showQrModal: false,
-  },
-  enableInjected: true,
-  enableEIP6963: true,
-  enableCoinbaseWallet: false,
-
-  // Logic: Use bloXroute's MEV-Guard for BSC. 
-  // This is often more effective than the standard Pancake RPC for broad wallet support.
+  connectors: [
+    injected(),
+    walletConnect({ projectId, metadata, showQrModal: false }),
+  ],
   transports: {
-    [bsc.id]: http("https://bsc.mev-share.flashbots.net"), 
+    // Logic: If the first RPC fails or times out, it moves to the next one automatically.
+    [bsc.id]: fallback([
+      // 1. High Security (MEV Protection)
+      http("https://bsc-mev.pancakeswap.finance"),
+      // 1.b. next option
+      http("https://bsc.mev-share.flashbots.net"),
+      // 2. High Reliability (PancakeSwap Private Node)
+      http("https://bscrpc.pancakeswap.finance"),
+      // 3. Ultimate Fallback (Public BSC Node)
+      http("https://binance.llamarpc.com") 
+    ]),
   },
+  ssr: true, 
 });
