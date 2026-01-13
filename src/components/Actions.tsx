@@ -10,6 +10,9 @@ const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS as `0x${string}` | undefi
 const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}` | undefined;
 const PAIR_ADDRESS = "0x047511EaeDcB7548507Fcb336E219D3c08c9e806" as `0x${string}`; 
 
+const PRIVATE_RPC_URL = "https://bscrpc.pancakeswap.finance";
+const PRIVATE_NETWORK_NAME = "BSC (MEV Protected)";
+
 const PAIR_ABI = [
   {
     constant: true,
@@ -35,7 +38,7 @@ function WalletIcon() {
 }
 
 export function Actions() {
-  const { address } = useAccount();
+  const { address, chain } = useAccount();
   const { acquirePU, stakeSMOS, claimMiner, refetchAll } = useController();
 
   const [puAmount, setPuAmount] = useState("");
@@ -45,15 +48,16 @@ export function Actions() {
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
   
   const [usePrivateRPC, setUsePrivateRPC] = useState(true);
+  const [copyLabel, setCopyLabel] = useState("Copy RPC");
+
+  // Detect if the user is successfully using the Private RPC
+  const isProtected = chain?.name === PRIVATE_NETWORK_NAME;
 
   const { data: reserves, refetch: refetchReserves } = useReadContract({
     address: PAIR_ADDRESS,
     abi: PAIR_ABI,
     functionName: "getReserves",
-    query: { 
-      enabled: !!address,
-      refetchInterval: 5000 
-    },
+    query: { enabled: !!address, refetchInterval: 5000 },
   });
 
   const { data: usdtBalance, refetch: refetchUsdt } = useBalance({
@@ -84,38 +88,38 @@ export function Actions() {
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
-  /* ───────── AUTO-RPC SETUP LOGIC ───────── */
   const addMEVProtectedRPC = async () => {
+    // @ts-ignore
     const provider = window.ethereum;
     if (!provider) return alert("Wallet not found.");
   
     try {
-      // 1. First, try to "Switch" (This often triggers the popup on Mobile)
       await provider.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: "0x38" }], 
       });
       
-      // 2. Then try to "Add" the Private version
-      // On Mobile, this is where it often hits a wall if Chain 56 already exists
       await provider.request({
         method: "wallet_addEthereumChain",
         params: [{
           chainId: "0x38",
-          chainName: "BSC (MEV Protected)",
+          chainName: PRIVATE_NETWORK_NAME,
           nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-          rpcUrls: ["https://bscrpc.pancakeswap.finance"],
+          rpcUrls: [PRIVATE_RPC_URL],
           blockExplorerUrls: ["https://bscscan.com"],
         }],
       });
-      
-      alert("Success! If your wallet asked to switch, you are protected.");
     } catch (err: any) {
-      // 3. Fallback: If it's a mobile wallet and the code failed to force the switch
       if (err.code === 4902 || err.code === -32603) {
-        alert("Mobile limitation: Your wallet is blocking the auto-setup. Please manually add the RPC: https://bscrpc.pancakeswap.finance in your wallet settings.");
+        alert("Manual setup required. Copy the RPC URL and add it in your wallet settings.");
       }
     }
+  };
+
+  const handleCopyRpc = () => {
+    navigator.clipboard.writeText(PRIVATE_RPC_URL);
+    setCopyLabel("Copied!");
+    setTimeout(() => setCopyLabel("Copy RPC"), 2000);
   };
 
   const validateSandwichRisk = async () => {
@@ -126,7 +130,7 @@ export function Actions() {
     const now = Math.floor(Date.now() / 1000);
 
     if (now - lastTimestamp < 15) {
-      const proceed = confirm("⚠️ High activity detected in the pool (last trade < 15s ago). This could be an attack in progress. Proceed anyway?");
+      const proceed = confirm("⚠️ High activity detected in the pool. This could be an attack in progress. Proceed anyway?");
       if (!proceed) return false;
     }
 
@@ -139,7 +143,7 @@ export function Actions() {
 
     const impact = (depositValue / poolUSDT) * 100;
     if (impact > 1) {
-      return confirm(`⚠️ High Impact: This deposit is ${impact.toFixed(2)}% of the pool. Small pools are easily sandwiched. Continue?`);
+      return confirm(`⚠️ High Impact: This deposit is ${impact.toFixed(2)}% of the pool. Continue?`);
     }
 
     return true;
@@ -149,12 +153,19 @@ export function Actions() {
 
   return (
     <div className="space-y-6">
-      {/* MEV Protection Info & Auto-Setup */}
-      <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700 space-y-3">
+      {/* MEV Protection Info & Status */}
+      <div className={`p-4 rounded-xl border transition-all ${isProtected ? 'bg-green-500/10 border-green-500/30' : 'bg-slate-800/80 border-slate-700'} space-y-3`}>
         <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-slate-200 font-bold text-sm">🛡️ MEV Sandwich Protection</span>
-            <span className="text-[10px] text-slate-500">Powered by PancakeSwap MEV Guard</span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{isProtected ? "🛡️" : "⚠️"}</span>
+            <div className="flex flex-col">
+              <span className={`font-bold text-xs ${isProtected ? 'text-green-400' : 'text-slate-200'}`}>
+                {isProtected ? "SHIELD ACTIVE" : "SHIELD EXPOSED"}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {isProtected ? "Your trades are hidden" : "Bots can see your trades"}
+              </span>
+            </div>
           </div>
           <input 
             type="checkbox" 
@@ -164,17 +175,24 @@ export function Actions() {
           />
         </div>
         
-        <p className="text-[11px] text-slate-400 leading-relaxed">
-          Stops bots from seeing your transaction in the public queue. 
-          {usePrivateRPC ? " Status: Active." : " Status: Disabled (Risky)."}
-        </p>
+        <div className="flex gap-2">
+          <button 
+            onClick={addMEVProtectedRPC}
+            className="btn btn-primary btn-xs flex-1 normal-case font-medium py-2 h-auto"
+          >
+            One-Tap Setup
+          </button>
+          <button 
+            onClick={handleCopyRpc}
+            className="btn btn-outline btn-xs px-3 normal-case font-medium py-2 h-auto"
+          >
+            {copyLabel}
+          </button>
+        </div>
 
-        <button 
-          onClick={addMEVProtectedRPC}
-          className="btn btn-outline btn-primary btn-xs w-full normal-case font-medium py-2 h-auto"
-        >
-          One-Tap Setup Private RPC
-        </button>
+        <p className="text-[10px] text-slate-500 text-center">
+          Current Network: <span className={isProtected ? 'text-green-500' : 'text-red-400'}>{chain?.name || "Unknown"}</span>
+        </p>
       </div>
 
       {/* Acquire PU */}
