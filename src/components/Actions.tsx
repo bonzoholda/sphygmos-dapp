@@ -11,8 +11,6 @@ const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}` | undefi
 const PAIR_ADDRESS = "0x047511EaeDcB7548507Fcb336E219D3c08c9e806" as `0x${string}`; 
 
 const PRIVATE_RPC_URL = "https://bscrpc.pancakeswap.finance";
-const PRIVATE_NETWORK_NAME = "MEV Shield Active"; 
-
 const PAIR_ABI = [{ constant: true, inputs: [], name: "getReserves", outputs: [{ name: "_reserve0", type: "uint112" }, { name: "_reserve1", type: "uint112" }, { name: "_blockTimestampLast", type: "uint32" }], stateMutability: "view", type: "function" }] as const;
 
 function WalletIcon() {
@@ -30,8 +28,10 @@ export function Actions() {
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
   const [copyLabel, setCopyLabel] = useState("Copy RPC");
 
-  // Logic: Green only if name matches custom shield name
-  const isProtected = chain?.name === PRIVATE_NETWORK_NAME;
+  // FIX: Use persistence. The user declares if they are protected.
+  const [isProtected, setIsProtected] = useState(() => {
+    return localStorage.getItem("mev_shield_verified") === "true";
+  });
 
   const { data: reserves, refetch: refetchReserves } = useReadContract({
     address: PAIR_ADDRESS, abi: PAIR_ABI, functionName: "getReserves",
@@ -54,19 +54,24 @@ export function Actions() {
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
+  const handleToggleProtection = (checked: boolean) => {
+    setIsProtected(checked);
+    localStorage.setItem("mev_shield_verified", checked.toString());
+  };
+
   const validateSandwichRisk = async () => {
     const { data: latestReserves } = await refetchReserves();
     if (!latestReserves) return true;
     const [res0, res1, lastTimestamp] = latestReserves;
     const now = Math.floor(Date.now() / 1000);
     if (now - lastTimestamp < 15) {
-      if (!confirm("⚠️ High activity detected. Possible bot attack. Proceed?")) return false;
+      if (!confirm("⚠️ High activity detected. Proceed?")) return false;
     }
     const isUsdtToken0 = USDT_ADDRESS?.toLowerCase() < SMOS_ADDRESS?.toLowerCase();
     const reserveUSDT = isUsdtToken0 ? res0 : res1;
     const poolUSDT = Number(formatUnits(reserveUSDT, 18));
     const impact = (parseFloat(puAmount) / poolUSDT) * 100;
-    if (impact > 1) return confirm(`⚠️ High Impact: ${impact.toFixed(2)}% of pool. Proceed?`);
+    if (impact > 1) return confirm(`⚠️ High Impact: ${impact.toFixed(2)}% of pool. Continue?`);
     return true;
   };
 
@@ -79,14 +84,15 @@ export function Actions() {
         method: "wallet_addEthereumChain",
         params: [{
           chainId: "0x38",
-          chainName: PRIVATE_NETWORK_NAME,
+          chainName: "BSC (MEV Protected)",
           nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
           rpcUrls: [PRIVATE_RPC_URL],
           blockExplorerUrls: ["https://bscscan.com"],
         }],
       });
+      handleToggleProtection(true); // Auto-enable green light on success
     } catch (err) {
-      alert("Manual Setup required. RPC URL: " + PRIVATE_RPC_URL);
+      alert("Please ensure you add " + PRIVATE_RPC_URL + " in your wallet settings.");
     }
   };
 
@@ -94,28 +100,36 @@ export function Actions() {
 
   return (
     <div className="space-y-6">
-      {/* --- MEV SHIELD CARD --- */}
-      <div className={`p-5 rounded-[2rem] border transition-all duration-500 ${isProtected ? 'bg-emerald-500/5 border-emerald-500/50' : 'bg-[#0f172a] border-slate-800'}`}>
-        <div className="flex items-center gap-4 mb-6">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${isProtected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-            {isProtected ? "🛡️" : "🔓"}
+      {/* --- SHIELD STATUS CARD --- */}
+      <div className={`p-5 rounded-[2rem] border transition-all duration-500 ${isProtected ? 'bg-emerald-500/5 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-slate-900 border-slate-800'}`}>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${isProtected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+              {isProtected ? "🛡️" : "🔓"}
+            </div>
+            <div>
+              <h4 className={`text-base font-black uppercase tracking-widest ${isProtected ? 'text-emerald-400' : 'text-slate-200'}`}>
+                {isProtected ? "Shield Active" : "Shield Exposed"}
+              </h4>
+              <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                {isProtected ? "Private RPC protection enabled." : "Using Public RPC. Bots can see you."}
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className={`text-base font-black uppercase tracking-widest ${isProtected ? 'text-emerald-400' : 'text-slate-200'}`}>
-              {isProtected ? "Shield Active" : "Shield Exposed"}
-            </h4>
-            <p className="text-[11px] text-slate-500 font-medium">
-              {isProtected ? "Private RPC is confirmed." : "Bots can see and attack your trades."}
-            </p>
-          </div>
+          <input 
+            type="checkbox" 
+            checked={isProtected} 
+            onChange={(e) => handleToggleProtection(e.target.checked)}
+            className="toggle toggle-success toggle-sm"
+          />
         </div>
         
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={addMEVProtectedRPC}
-            className={`h-14 rounded-2xl text-sm font-bold border-none transition-all ${isProtected ? 'bg-emerald-500/20 text-emerald-500' : 'bg-[#eab308] text-black hover:bg-[#ca8a04]'}`}
+            className="h-14 rounded-2xl text-sm font-bold bg-[#eab308] text-black hover:bg-[#ca8a04] border-none"
           >
-            {isProtected ? "Protected" : "One-Tap Setup"}
+            One-Tap Setup
           </button>
           <button 
             onClick={() => {
@@ -128,19 +142,12 @@ export function Actions() {
             {copyLabel}
           </button>
         </div>
-        
-        <div className="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center px-1">
-          <span className="text-[10px] text-slate-600 uppercase font-black tracking-[0.2em]">Connection Status</span>
-          <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${isProtected ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/10 text-red-400'}`}>
-            {chain?.name || "BNB Smart Chain"}
-          </span>
-        </div>
       </div>
 
       {/* --- ACQUIRE POWER UNITS --- */}
       <div className="space-y-2">
-        <div className="relative">
-          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28" placeholder="USDT amount" value={puAmount} onChange={(e) => setPuAmount(e.target.value)} />
+        <div className="relative group">
+          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28 text-white focus:border-[#eab308]" placeholder="USDT amount" value={puAmount} onChange={(e) => setPuAmount(e.target.value)} />
           <div className="absolute inset-y-0 right-4 flex items-center gap-1 text-xs text-slate-400 font-bold">
             <WalletIcon /> {usdtBalance ? Number(formatUnits(usdtBalance.value, usdtBalance.decimals)).toFixed(2) : "0.00"}
           </div>
@@ -168,13 +175,13 @@ export function Actions() {
       {/* --- STAKE SMOS --- */}
       <div className="space-y-2">
         <div className="relative">
-          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28" placeholder="SMOS amount" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
+          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28 text-white focus:border-[#eab308]" placeholder="SMOS amount" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
           <div className="absolute inset-y-0 right-4 flex items-center gap-1 text-xs text-slate-400 font-bold">
             <WalletIcon /> {smosBalance ? Number(formatUnits(smosBalance.value, smosBalance.decimals)).toFixed(2) : "0.00"}
           </div>
         </div>
         <button
-          className="btn h-14 w-full bg-slate-800 hover:bg-slate-700 text-white border-none rounded-2xl font-black uppercase tracking-widest"
+          className="btn h-14 w-full bg-slate-800 hover:bg-slate-700 text-white border-none rounded-2xl font-black uppercase"
           disabled={!stakeAmount || stakeSMOS.isPending}
           onClick={async () => {
             const hash = await stakeSMOS.writeContractAsync({
@@ -190,7 +197,7 @@ export function Actions() {
       </div>
 
       {/* --- CLAIM --- */}
-      <button className="btn btn-outline h-14 w-full border-slate-700 rounded-2xl font-black uppercase tracking-widest" disabled={claimMiner.isPending} onClick={async () => {
+      <button className="btn btn-outline h-14 w-full border-slate-700 rounded-2xl font-black uppercase tracking-widest text-white hover:bg-slate-800" disabled={claimMiner.isPending} onClick={async () => {
           try {
             const hash = await claimMiner.writeContractAsync({ address: controller, abi: SPHYGMOS_CONTROLLER_ABI, functionName: "claimMinerRewards" });
             setClaimTx(hash);
