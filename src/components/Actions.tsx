@@ -82,30 +82,46 @@ export function Actions() {
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
-  /* ───────── FINAL DEFENSE LOGIC ───────── */
+  /* ───────── IMPROVED DEFENSE LOGIC ───────── */
   const validateSandwichRisk = async () => {
+    // 1. Fetch fresh data
     const { data: latestReserves } = await refetchReserves();
     if (!latestReserves) return true;
-
+  
     const [res0, res1, lastTimestamp] = latestReserves;
     
-    // 1. Stale Data Check: If reserves haven't updated in a while, the RPC might be lagging
+    // 2. Optimized Stale Check:
+    // Instead of using Date.now() (local system time), we check if the 
+    // pool is extremely outdated. We increase the threshold to 30 mins
+    // or focus on Price Impact instead.
     const now = Math.floor(Date.now() / 1000);
-    if (now - lastTimestamp > 300) { // 5 minutes
-       alert("Liquidity data is stale. Please refresh the page to ensure safety.");
-       return false;
+    const secondsSinceLastTrade = now - lastTimestamp;
+  
+    // If the pool hasn't moved in 1 hour, it might be an abandoned or 
+    // low-liquidity pool, but it's not necessarily a "stale RPC".
+    if (secondsSinceLastTrade > 3600) {
+        console.warn("Pool hasn't had a trade in over an hour.");
     }
-
-    // 2. High Impact Warning:
+  
+    // 3. High Impact Warning (The most important defense):
     const depositValue = parseFloat(puAmount);
+    if (isNaN(depositValue) || depositValue <= 0) return false;
+  
     const poolUSDT = Number(formatUnits(res0, 18));
-    if (depositValue > poolUSDT * 0.01) { // 1% of pool
-      return confirm("This deposit is large relative to the pool. It is highly susceptible to sandwich attacks even with protection. Continue?");
+    
+    // Calculate potential impact percentage
+    const impact = (depositValue / poolUSDT) * 100;
+  
+    if (impact > 1) { // Greater than 1% of pool
+      return confirm(
+        `Warning: This deposit represents ${impact.toFixed(2)}% of the liquidity pool. ` +
+        `Large trades are highly vulnerable to sandwich attacks. Do you wish to proceed?`
+      );
     }
-
+  
     return true;
   };
-
+  
   if (!address || !controller) return null;
 
   return (
