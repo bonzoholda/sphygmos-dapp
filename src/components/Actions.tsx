@@ -11,24 +11,12 @@ const SMOS_ADDRESS = (import.meta.env.VITE_SMOS_ADDRESS || "0x000000000000000000
 const PAIR_ADDRESS = "0x047511EaeDcB7548507Fcb336E219D3c08c9e806" as `0x${string}`;
 const PRIVATE_RPC_URL = "https://bscrpc.pancakeswap.finance";
 
-const PAIR_ABI = [{
-  constant: true,
-  inputs: [],
-  name: "getReserves",
-  outputs: [
-    { name: "_reserve0", type: "uint112" },
-    { name: "_reserve1", type: "uint112" },
-    { name: "_blockTimestampLast", type: "uint32" }
-  ],
-  stateMutability: "view",
-  type: "function"
-}] as const;
+const PAIR_ABI = [{ constant: true, inputs: [], name: "getReserves", outputs: [{ name: "_reserve0", type: "uint112" }, { name: "_reserve1", type: "uint112" }, { name: "_blockTimestampLast", type: "uint32" }], stateMutability: "view", type: "function" }] as const;
 
 function WalletIcon() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 7h18v10H3z" />
-      <path d="M16 11h4v2h-4z" />
+      <path d="M3 7h18v10H3z" /><path d="M16 11h4v2h-4z" />
     </svg>
   );
 }
@@ -45,15 +33,13 @@ export function Actions() {
   const [copyLabel, setCopyLabel] = useState("Copy RPC");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 🔒 MEV: acknowledgement, not detection
+  // 🔒 MEV: acknowledgement logic
   const [isProtected, setIsProtected] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("mev_shield_verified") === "true";
-    }
+    if (typeof window !== "undefined") return localStorage.getItem("mev_shield_verified") === "true";
     return false;
   });
 
-  const txBlocked = !isProtected; // 🔒 MEV gate
+  const txBlocked = !isProtected;
 
   const { data: usdtBalance, isLoading: loadingUsdt } = useBalance({ address, token: USDT_ADDRESS });
   const { data: smosBalance, isLoading: loadingSmos } = useBalance({ address, token: SMOS_ADDRESS });
@@ -64,12 +50,13 @@ export function Actions() {
     query: { enabled: !!address, refetchInterval: 5000 },
   });
 
+  // Splash Screen Timer
   useEffect(() => {
-    if (!loadingUsdt && !loadingSmos && !loadingReserves) {
-      const timer = setTimeout(() => setIsLoaded(true), 1000);
+    if (!loadingUsdt && !loadingSmos && !loadingReserves && address) {
+      const timer = setTimeout(() => setIsLoaded(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [loadingUsdt, loadingSmos, loadingReserves]);
+  }, [loadingUsdt, loadingSmos, loadingReserves, address]);
 
   const puWait = useWaitForTransactionReceipt({ hash: puTx });
   const stakeWait = useWaitForTransactionReceipt({ hash: stakeTx });
@@ -106,69 +93,74 @@ export function Actions() {
     }
   };
 
-  if (!isLoaded && address) return null;
-  if (!address) return null;
+  // 🚀 Splash Screen UI
+  if (address && !isLoaded) return (
+    <div className="flex flex-col items-center justify-center p-16 space-y-4 bg-slate-900/80 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+      <div className="w-10 h-10 border-4 border-[#eab308] border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] animate-pulse">Initiating the dApp...</p>
+    </div>
+  );
+
+  if (!address) return (
+    <div className="p-10 text-center bg-slate-900/50 rounded-[2.5rem] border border-slate-800">
+      <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Wallet Connection Required</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* --- SHIELD STATUS CARD --- */}
-      <div className={`p-6 rounded-[2.5rem] border-2 ${isProtected ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-slate-900/50 border-slate-800'}`}>
+      <div className={`p-6 rounded-[2.5rem] border-2 transition-all duration-500 ${isProtected ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-slate-900/50 border-slate-800 shadow-lg'}`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl ${isProtected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl transition-all ${isProtected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
               {isProtected ? "🛡️" : "🔓"}
             </div>
             <div>
               <h4 className={`text-base font-black uppercase tracking-widest ${isProtected ? 'text-emerald-400' : 'text-slate-200'}`}>
-                {isProtected ? "Shield Acknowledged" : "Shield Required"}
+                {isProtected ? "Shield Active" : "Shield Required"}
               </h4>
-              <p className="text-[11px] text-slate-500 font-bold uppercase">
-                Private RPC strongly recommended
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">
+                {isProtected ? "Protected via Private RPC" : "Standard RPC - Risk Detected"}
               </p>
             </div>
           </div>
-
-          {/* 🔒 MEV: read-only indicator */}
-          <input
-            type="checkbox"
-            checked={isProtected}
-            readOnly
-            className="toggle toggle-success toggle-md border-slate-700"
-          />
+          <input type="checkbox" checked={isProtected} readOnly className="toggle toggle-success toggle-md border-slate-700 pointer-events-none" />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={addMEVProtectedRPC} className="h-14 rounded-2xl text-xs font-black uppercase bg-[#eab308] text-black">
+          <button onClick={addMEVProtectedRPC} className="h-14 rounded-2xl text-xs font-black uppercase bg-[#eab308] text-black hover:bg-[#ca8a04] transition-all active:scale-95 shadow-lg shadow-yellow-900/10">
             One-Tap Setup
           </button>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(PRIVATE_RPC_URL);
-              setCopyLabel("Copied!");
-              setTimeout(() => setCopyLabel("Copy RPC"), 2000);
-            }}
-            className="h-14 rounded-2xl text-xs font-black uppercase border-2 border-slate-700 text-slate-300"
-          >
+          <button onClick={() => { navigator.clipboard.writeText(PRIVATE_RPC_URL); setCopyLabel("Copied!"); setTimeout(() => setCopyLabel("Copy RPC"), 2000); }} className="h-14 rounded-2xl text-xs font-black uppercase border-2 border-slate-700 text-slate-300 hover:text-white transition-all active:scale-95">
             {copyLabel}
           </button>
         </div>
       </div>
 
       {/* --- ACQUIRE POWER UNITS --- */}
-      <button
-        disabled={txBlocked || !puAmount || acquirePU.isPending}
-        onClick={() => {
-          acquirePU.writeContractAsync({
-            address: controller,
-            abi: SPHYGMOS_CONTROLLER_ABI,
-            functionName: "depositPush",
-            args: [parseUnits(puAmount, 18)],
-            maxPriorityFeePerGas: parseUnits("3", "gwei"),
-            maxFeePerGas: parseUnits("6", "gwei"), // 🔒 MEV
-          }).then(setPuTx).catch(() => {});
-        }}
+      <div className="space-y-3">
+        <div className="relative group">
+          <input className="input w-full h-14 bg-slate-900 border-slate-800 focus:border-[#eab308] rounded-2xl text-white font-bold transition-all" placeholder="USDT amount" value={puAmount} onChange={(e) => setPuAmount(e.target.value)} />
+          <div className="absolute inset-y-0 right-4 flex items-center gap-2 text-xs font-bold text-slate-500">
+             <WalletIcon /> {usdtBalance ? Number(formatUnits(usdtBalance.value, 18)).toFixed(2) : "0.00"}
+          </div>
+        </div>
+        <button
+          className="btn h-14 w-full bg-[#eab308] hover:bg-[#ca8a04] text-black border-none rounded-2xl font-black text-sm uppercase tracking-widest disabled:bg-slate-800 disabled:text-slate-600 shadow-lg shadow-yellow-900/20 transition-all active:scale-95"
+          disabled={txBlocked || !puAmount || acquirePU.isPending}
+          onClick={() => {
+            acquirePU.writeContractAsync({
+              address: controller,
+              abi: SPHYGMOS_CONTROLLER_ABI,
+              functionName: "depositPush",
+              args: [parseUnits(puAmount, 18)],
+              maxPriorityFeePerGas: parseUnits("3", "gwei"),
+              maxFeePerGas: parseUnits("6", "gwei"), 
+            }).then(hash => setPuTx(hash)).catch(() => {});
+          }}
         >
-          {acquirePU.isPending ? "Confirming..." : "Acquire Power Units"}
+          {txBlocked ? "Shield Required to Transact" : (acquirePU.isPending ? "Confirming..." : "Acquire Power Units")}
         </button>
         <TxStatus hash={puTx} />
       </div>
@@ -182,24 +174,24 @@ export function Actions() {
           </div>
         </div>
         <button
-          className="btn h-14 w-full bg-slate-800 hover:bg-slate-700 text-white border-none rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
-          disabled={!stakeAmount || stakeSMOS.isPending}
+          className="btn h-14 w-full bg-slate-800 hover:bg-slate-700 text-white border-none rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all disabled:text-slate-600"
+          disabled={txBlocked || !stakeAmount || stakeSMOS.isPending}
           onClick={() => {
             stakeSMOS.writeContractAsync({
-                address: controller, abi: SPHYGMOS_CONTROLLER_ABI, functionName: "stake",
-                args: [parseUnits(stakeAmount, 18)],
+              address: controller, abi: SPHYGMOS_CONTROLLER_ABI, functionName: "stake",
+              args: [parseUnits(stakeAmount, 18)],
             }).then(hash => setStakeTx(hash)).catch(() => {});
           }}
         >
-          {stakeSMOS.isPending ? "Staking..." : "Stake SMOS"}
+          {txBlocked ? "Shield Required" : (stakeSMOS.isPending ? "Staking..." : "Stake SMOS")}
         </button>
         <TxStatus hash={stakeTx} />
       </div>
 
       {/* --- CLAIM REWARDS --- */}
       <button 
-        className="btn h-14 w-full bg-transparent border-2 border-slate-800 hover:border-slate-600 text-slate-400 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95"
-        disabled={claimMiner.isPending} 
+        className="btn h-14 w-full bg-transparent border-2 border-slate-800 hover:border-slate-600 text-slate-400 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-50"
+        disabled={txBlocked || claimMiner.isPending} 
         onClick={() => {
             claimMiner.writeContractAsync({ 
                 address: controller, 
@@ -208,7 +200,7 @@ export function Actions() {
             }).then(hash => setClaimTx(hash)).catch(() => {});
         }}
       >
-        {claimMiner.isPending ? "Processing..." : "Claim Mining Rewards"}
+        {txBlocked ? "Shield Required" : (claimMiner.isPending ? "Processing..." : "Claim Mining Rewards")}
       </button>
       <TxStatus hash={claimTx} />
     </div>
