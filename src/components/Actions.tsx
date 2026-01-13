@@ -11,10 +11,16 @@ const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}` | undefi
 const PAIR_ADDRESS = "0x047511EaeDcB7548507Fcb336E219D3c08c9e806" as `0x${string}`; 
 
 const PRIVATE_RPC_URL = "https://bscrpc.pancakeswap.finance";
+
 const PAIR_ABI = [{ constant: true, inputs: [], name: "getReserves", outputs: [{ name: "_reserve0", type: "uint112" }, { name: "_reserve1", type: "uint112" }, { name: "_blockTimestampLast", type: "uint32" }], stateMutability: "view", type: "function" }] as const;
 
+// FIXED: Icon component added back to prevent blank screen crash
 function WalletIcon() {
-  return <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7h18v10H3z" /><path d="M16 11h4v2h-4z" /></svg>;
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 7h18v10H3z" /><path d="M16 11h4v2h-4z" />
+    </svg>
+  );
 }
 
 export function Actions() {
@@ -28,9 +34,12 @@ export function Actions() {
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
   const [copyLabel, setCopyLabel] = useState("Copy RPC");
 
-  // FIX: Use persistence. The user declares if they are protected.
+  // PERSISTENCE: Remembers the user's shield choice across refreshes
   const [isProtected, setIsProtected] = useState(() => {
-    return localStorage.getItem("mev_shield_verified") === "true";
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem("mev_shield_verified") === "true";
+    }
+    return false;
   });
 
   const { data: reserves, refetch: refetchReserves } = useReadContract({
@@ -65,7 +74,7 @@ export function Actions() {
     const [res0, res1, lastTimestamp] = latestReserves;
     const now = Math.floor(Date.now() / 1000);
     if (now - lastTimestamp < 15) {
-      if (!confirm("⚠️ High activity detected. Proceed?")) return false;
+      if (!confirm("⚠️ High activity detected in the pool. Proceed anyway?")) return false;
     }
     const isUsdtToken0 = USDT_ADDRESS?.toLowerCase() < SMOS_ADDRESS?.toLowerCase();
     const reserveUSDT = isUsdtToken0 ? res0 : res1;
@@ -90,9 +99,9 @@ export function Actions() {
           blockExplorerUrls: ["https://bscscan.com"],
         }],
       });
-      handleToggleProtection(true); // Auto-enable green light on success
+      handleToggleProtection(true);
     } catch (err) {
-      alert("Please ensure you add " + PRIVATE_RPC_URL + " in your wallet settings.");
+      alert("Please ensure you add " + PRIVATE_RPC_URL + " manually.");
     }
   };
 
@@ -104,7 +113,7 @@ export function Actions() {
       <div className={`p-5 rounded-[2rem] border transition-all duration-500 ${isProtected ? 'bg-emerald-500/5 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-slate-900 border-slate-800'}`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${isProtected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all ${isProtected ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-slate-800 text-slate-500'}`}>
               {isProtected ? "🛡️" : "🔓"}
             </div>
             <div>
@@ -127,7 +136,7 @@ export function Actions() {
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={addMEVProtectedRPC}
-            className="h-14 rounded-2xl text-sm font-bold bg-[#eab308] text-black hover:bg-[#ca8a04] border-none"
+            className="h-14 rounded-2xl text-sm font-bold bg-[#eab308] text-black hover:bg-[#ca8a04] border-none shadow-lg shadow-yellow-900/10 transition-all active:scale-95"
           >
             One-Tap Setup
           </button>
@@ -137,7 +146,7 @@ export function Actions() {
               setCopyLabel("Copied!");
               setTimeout(() => setCopyLabel("Copy RPC"), 2000);
             }}
-            className="h-14 rounded-2xl text-sm font-bold border-2 border-[#eab308] text-[#eab308] bg-transparent hover:bg-[#eab308]/10"
+            className="h-14 rounded-2xl text-sm font-bold border-2 border-[#eab308] text-[#eab308] bg-transparent hover:bg-[#eab308]/10 transition-all active:scale-95"
           >
             {copyLabel}
           </button>
@@ -145,15 +154,15 @@ export function Actions() {
       </div>
 
       {/* --- ACQUIRE POWER UNITS --- */}
-      <div className="space-y-2">
-        <div className="relative group">
-          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28 text-white focus:border-[#eab308]" placeholder="USDT amount" value={puAmount} onChange={(e) => setPuAmount(e.target.value)} />
-          <div className="absolute inset-y-0 right-4 flex items-center gap-1 text-xs text-slate-400 font-bold">
+      <div className="space-y-3">
+        <div className="relative">
+          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28 text-white focus:border-[#eab308] transition-all" placeholder="USDT amount" value={puAmount} onChange={(e) => setPuAmount(e.target.value)} />
+          <div className="absolute inset-y-0 right-4 flex items-center gap-2 text-xs text-slate-400 font-bold">
             <WalletIcon /> {usdtBalance ? Number(formatUnits(usdtBalance.value, usdtBalance.decimals)).toFixed(2) : "0.00"}
           </div>
         </div>
         <button
-          className="btn h-14 w-full bg-[#eab308] hover:bg-[#ca8a04] text-black border-none rounded-2xl font-black uppercase tracking-widest"
+          className="btn h-14 w-full bg-[#eab308] hover:bg-[#ca8a04] text-black border-none rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-yellow-900/20 active:scale-95 transition-all"
           disabled={!puAmount || acquirePU.isPending}
           onClick={async () => {
             if (!(await validateSandwichRisk())) return;
@@ -173,15 +182,15 @@ export function Actions() {
       </div>
 
       {/* --- STAKE SMOS --- */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="relative">
-          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28 text-white focus:border-[#eab308]" placeholder="SMOS amount" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
-          <div className="absolute inset-y-0 right-4 flex items-center gap-1 text-xs text-slate-400 font-bold">
+          <input className="input w-full h-14 bg-slate-900 border-slate-800 rounded-2xl pr-28 text-white focus:border-[#eab308] transition-all" placeholder="SMOS amount" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
+          <div className="absolute inset-y-0 right-4 flex items-center gap-2 text-xs text-slate-400 font-bold">
             <WalletIcon /> {smosBalance ? Number(formatUnits(smosBalance.value, smosBalance.decimals)).toFixed(2) : "0.00"}
           </div>
         </div>
         <button
-          className="btn h-14 w-full bg-slate-800 hover:bg-slate-700 text-white border-none rounded-2xl font-black uppercase"
+          className="btn h-14 w-full bg-slate-800 hover:bg-slate-700 text-white border-none rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all"
           disabled={!stakeAmount || stakeSMOS.isPending}
           onClick={async () => {
             const hash = await stakeSMOS.writeContractAsync({
@@ -197,7 +206,7 @@ export function Actions() {
       </div>
 
       {/* --- CLAIM --- */}
-      <button className="btn btn-outline h-14 w-full border-slate-700 rounded-2xl font-black uppercase tracking-widest text-white hover:bg-slate-800" disabled={claimMiner.isPending} onClick={async () => {
+      <button className="btn btn-outline h-14 w-full border-slate-700 rounded-2xl font-black uppercase tracking-widest text-white hover:bg-slate-800 active:scale-95 transition-all" disabled={claimMiner.isPending} onClick={async () => {
           try {
             const hash = await claimMiner.writeContractAsync({ address: controller, abi: SPHYGMOS_CONTROLLER_ABI, functionName: "claimMinerRewards" });
             setClaimTx(hash);
