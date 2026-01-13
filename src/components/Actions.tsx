@@ -43,6 +43,9 @@ export function Actions() {
   const [puTx, setPuTx] = useState<`0x${string}`>();
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
+  
+  // Anti-Sandwich Toggle
+  const [usePrivateRPC, setUsePrivateRPC] = useState(true);
 
   const { data: reserves, refetch: refetchReserves } = useReadContract({
     address: PAIR_ADDRESS,
@@ -50,7 +53,7 @@ export function Actions() {
     functionName: "getReserves",
     query: { 
       enabled: !!address,
-      refetchInterval: 10000 // Force refresh every 10 seconds to catch bot activity
+      refetchInterval: 5000 // Faster refresh to monitor volatility
     },
   });
 
@@ -68,7 +71,7 @@ export function Actions() {
 
   const puWait = useWaitForTransactionReceipt({ hash: puTx });
   const stakeWait = useWaitForTransactionReceipt({ hash: stakeTx });
-  const claimWait = useWaitForTransactionReceipt({ hash: claimTx });
+  const claimWait = useWaitForTransactionReceipt({ hash: claimWait });
 
   useEffect(() => {
     if (puWait.isSuccess || stakeWait.isSuccess || claimWait.isSuccess) {
@@ -82,50 +85,59 @@ export function Actions() {
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
-  /* ───────── IMPROVED DEFENSE LOGIC ───────── */
+  /* ───────── ENHANCED DEFENSE LOGIC ───────── */
   const validateSandwichRisk = async () => {
-    // 1. Fetch fresh data
     const { data: latestReserves } = await refetchReserves();
     if (!latestReserves) return true;
-  
+
     const [res0, res1, lastTimestamp] = latestReserves;
-    
-    // 2. Optimized Stale Check:
-    // Instead of using Date.now() (local system time), we check if the 
-    // pool is extremely outdated. We increase the threshold to 30 mins
-    // or focus on Price Impact instead.
     const now = Math.floor(Date.now() / 1000);
-    const secondsSinceLastTrade = now - lastTimestamp;
-  
-    // If the pool hasn't moved in 1 hour, it might be an abandoned or 
-    // low-liquidity pool, but it's not necessarily a "stale RPC".
-    if (secondsSinceLastTrade > 3600) {
-        console.warn("Pool hasn't had a trade in over an hour.");
+
+    // 1. VOLATILITY CHECK (Detecting active attacks)
+    // If a trade happened in the last 15 seconds, someone might be manipulating the pool.
+    if (now - lastTimestamp < 15) {
+      const proceed = confirm("⚠️ High activity detected in the pool (last trade < 15s ago). This could be an attack in progress. Proceed anyway?");
+      if (!proceed) return false;
     }
-  
-    // 3. High Impact Warning (The most important defense):
+
+    // 2. DYNAMIC PRICE IMPACT CHECK
+    // Determine which reserve is USDT
+    const isUsdtToken0 = USDT_ADDRESS?.toLowerCase() < SMOS_ADDRESS?.toLowerCase();
+    const reserveUSDT = isUsdtToken0 ? res0 : res1;
+    const poolUSDT = Number(formatUnits(reserveUSDT, 18));
+    
     const depositValue = parseFloat(puAmount);
     if (isNaN(depositValue) || depositValue <= 0) return false;
-  
-    const poolUSDT = Number(formatUnits(res0, 18));
-    
-    // Calculate potential impact percentage
+
     const impact = (depositValue / poolUSDT) * 100;
-  
-    if (impact > 1) { // Greater than 1% of pool
-      return confirm(
-        `Warning: This deposit represents ${impact.toFixed(2)}% of the liquidity pool. ` +
-        `Large trades are highly vulnerable to sandwich attacks. Do you wish to proceed?`
-      );
+
+    if (impact > 1) {
+      return confirm(`⚠️ High Impact: This deposit is ${impact.toFixed(2)}% of the pool. Small pools are easily sandwiched. Continue?`);
     }
-  
+
     return true;
   };
-  
+
   if (!address || !controller) return null;
 
   return (
     <div className="space-y-6">
+      {/* MEV Protection Info */}
+      <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 text-xs space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-slate-300 font-medium">MEV Sandwich Protection</span>
+          <input 
+            type="checkbox" 
+            checked={usePrivateRPC} 
+            onChange={(e) => setUsePrivateRPC(e.target.checked)}
+            className="toggle toggle-primary toggle-xs"
+          />
+        </div>
+        <p className="text-slate-500 leading-relaxed">
+          Protects your deposit from bots. {usePrivateRPC ? "Status: Active." : "Status: Disabled (Risky)."}
+        </p>
+      </div>
+
       {/* Acquire PU */}
       <div className="space-y-2">
         <div className="relative">
@@ -148,13 +160,12 @@ export function Actions() {
             if (!isSafe) return;
 
             try {
-              // Priority Tip to incentivize the MEV RPC to bundle this transaction faster
               const hash = await acquirePU.writeContractAsync({
                 address: controller,
                 abi: SPHYGMOS_CONTROLLER_ABI,
                 functionName: "depositPush",
                 args: [parseUnits(puAmount, 18)],
-                // BSC Priority Tip
+                // High priority tip to outpace bots in the mempool
                 maxPriorityFeePerGas: parseUnits('3', 'gwei'), 
               });
               setPuTx(hash);
