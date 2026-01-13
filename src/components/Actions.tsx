@@ -86,30 +86,35 @@ export function Actions() {
 
   /* ───────── AUTO-RPC SETUP LOGIC ───────── */
   const addMEVProtectedRPC = async () => {
-    // @ts-ignore
     const provider = window.ethereum;
-    if (!provider) {
-      alert("Please use a Web3 wallet browser (like SafePal or MetaMask).");
-      return;
-    }
-
+    if (!provider) return alert("Wallet not found.");
+  
     try {
+      // 1. First, try to "Switch" (This often triggers the popup on Mobile)
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x38" }], 
+      });
+      
+      // 2. Then try to "Add" the Private version
+      // On Mobile, this is where it often hits a wall if Chain 56 already exists
       await provider.request({
         method: "wallet_addEthereumChain",
-        params: [
-          {
-            chainId: "0x38", // BSC 56 in Hex
-            chainName: "BSC (MEV Protected)",
-            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-            rpcUrls: ["https://bscrpc.pancakeswap.finance"],
-            blockExplorerUrls: ["https://bscscan.com"],
-          },
-        ],
+        params: [{
+          chainId: "0x38",
+          chainName: "BSC (MEV Protected)",
+          nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+          rpcUrls: ["https://bscrpc.pancakeswap.finance"],
+          blockExplorerUrls: ["https://bscscan.com"],
+        }],
       });
-      alert("Success! You are now using a Private RPC. Your transactions are hidden from bots.");
-    } catch (err) {
-      console.error("RPC Setup failed", err);
-      alert("Failed to add network automatically. You may need to add it manually in your wallet settings.");
+      
+      alert("Success! If your wallet asked to switch, you are protected.");
+    } catch (err: any) {
+      // 3. Fallback: If it's a mobile wallet and the code failed to force the switch
+      if (err.code === 4902 || err.code === -32603) {
+        alert("Mobile limitation: Your wallet is blocking the auto-setup. Please manually add the RPC: https://bscrpc.pancakeswap.finance in your wallet settings.");
+      }
     }
   };
 
