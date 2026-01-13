@@ -8,10 +8,8 @@ import { TxStatus } from "./TxStatus";
 const controller = import.meta.env.VITE_CONTROLLER_ADDRESS as `0x${string}` | undefined;
 const USDT_ADDRESS = import.meta.env.VITE_USDT_ADDRESS as `0x${string}` | undefined;
 const SMOS_ADDRESS = import.meta.env.VITE_SMOS_ADDRESS as `0x${string}` | undefined;
-// You need the PancakeSwap Pair address (USDT/SMOS) to check for MEV/Sandwich activity
 const PAIR_ADDRESS = "0x047511EaeDcB7548507Fcb336E219D3c08c9e806" as `0x${string}`; 
 
-/* ───────── Minimal Pair ABI for Reserves ───────── */
 const PAIR_ABI = [
   {
     constant: true,
@@ -46,12 +44,14 @@ export function Actions() {
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
 
-  /* ───────── MEV PROTECTION DATA ───────── */
   const { data: reserves, refetch: refetchReserves } = useReadContract({
     address: PAIR_ADDRESS,
     abi: PAIR_ABI,
     functionName: "getReserves",
-    query: { enabled: !!address },
+    query: { 
+      enabled: !!address,
+      refetchInterval: 10000 // Force refresh every 10 seconds to catch bot activity
+    },
   });
 
   const { data: usdtBalance, refetch: refetchUsdt } = useBalance({
@@ -75,29 +75,34 @@ export function Actions() {
       refetchAll();
       refetchUsdt();
       refetchSmos();
-      refetchReserves(); // Refresh reserves after tx
+      refetchReserves();
       if (puWait.isSuccess) { setPuAmount(""); setPuTx(undefined); }
       if (stakeWait.isSuccess) { setStakeAmount(""); setStakeTx(undefined); }
       if (claimWait.isSuccess) { setClaimTx(undefined); }
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
-  /* ───────── PROTECTION LOGIC ───────── */
+  /* ───────── FINAL DEFENSE LOGIC ───────── */
   const validateSandwichRisk = async () => {
     const { data: latestReserves } = await refetchReserves();
-    if (!latestReserves) return true; // Proceed if check fails, but ideally we want reserves
+    if (!latestReserves) return true;
 
-    // Check if the current pool price is stable
-    // If a bot just swapped, the reserves will be "tilted"
-    const [res0, res1] = latestReserves;
-    const currentRatio = Number(res0) / Number(res1);
+    const [res0, res1, lastTimestamp] = latestReserves;
     
-    // In a production environment, you could compare currentRatio against an Oracle 
-    // or a 5-minute TWAP. For now, we ensure the pool isn't empty and is responsive.
-    if (res0 === 0n || res1 === 0n) {
-      alert("Liquidity pool is empty. Deposit risky.");
-      return false;
+    // 1. Stale Data Check: If reserves haven't updated in a while, the RPC might be lagging
+    const now = Math.floor(Date.now() / 1000);
+    if (now - lastTimestamp > 300) { // 5 minutes
+       alert("Liquidity data is stale. Please refresh the page to ensure safety.");
+       return false;
     }
+
+    // 2. High Impact Warning:
+    const depositValue = parseFloat(puAmount);
+    const poolUSDT = Number(formatUnits(res0, 18));
+    if (depositValue > poolUSDT * 0.01) { // 1% of pool
+      return confirm("This deposit is large relative to the pool. It is highly susceptible to sandwich attacks even with protection. Continue?");
+    }
+
     return true;
   };
 
@@ -123,17 +128,18 @@ export function Actions() {
           className="btn w-full"
           disabled={!puAmount || acquirePU.isPending}
           onClick={async () => {
-            // STEP 1: Anti-Sandwich Check
             const isSafe = await validateSandwichRisk();
             if (!isSafe) return;
 
-            // STEP 2: Execute
             try {
+              // Priority Tip to incentivize the MEV RPC to bundle this transaction faster
               const hash = await acquirePU.writeContractAsync({
                 address: controller,
                 abi: SPHYGMOS_CONTROLLER_ABI,
                 functionName: "depositPush",
                 args: [parseUnits(puAmount, 18)],
+                // BSC Priority Tip
+                maxPriorityFeePerGas: parseUnits('3', 'gwei'), 
               });
               setPuTx(hash);
             } catch (err) {
@@ -141,7 +147,7 @@ export function Actions() {
             }
           }}
         >
-          {acquirePU.isPending ? "Processing…" : "Acquire Power Units"}
+          {acquirePU.isPending ? "Processing..." : "Acquire Power Units"}
         </button>
         <TxStatus hash={puTx} />
       </div>
@@ -173,7 +179,7 @@ export function Actions() {
             setStakeTx(hash);
           }}
         >
-          {stakeSMOS.isPending ? "Staking…" : "Stake SMOS"}
+          {stakeSMOS.isPending ? "Staking..." : "Stake SMOS"}
         </button>
         <TxStatus hash={stakeTx} />
       </div>
@@ -195,7 +201,7 @@ export function Actions() {
           }
         }}
       >
-        {claimMiner.isPending ? "Claiming…" : "Claim Mining Rewards"}
+        {claimMiner.isPending ? "Claiming..." : "Claim Mining Rewards"}
       </button>
 
       <TxStatus hash={claimTx} />
