@@ -70,7 +70,6 @@ export function Actions() {
 
   const puWait = useWaitForTransactionReceipt({ hash: puTx });
   const stakeWait = useWaitForTransactionReceipt({ hash: stakeTx });
-  // FIXED: Changed hash from claimWait to claimTx
   const claimWait = useWaitForTransactionReceipt({ hash: claimTx });
 
   useEffect(() => {
@@ -84,6 +83,35 @@ export function Actions() {
       if (claimWait.isSuccess) { setClaimTx(undefined); }
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
+
+  /* ───────── AUTO-RPC SETUP LOGIC ───────── */
+  const addMEVProtectedRPC = async () => {
+    // @ts-ignore
+    const provider = window.ethereum;
+    if (!provider) {
+      alert("Please use a Web3 wallet browser (like SafePal or MetaMask).");
+      return;
+    }
+
+    try {
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: "0x38", // BSC 56 in Hex
+            chainName: "BSC (MEV Protected)",
+            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+            rpcUrls: ["https://bscrpc.pancakeswap.finance"],
+            blockExplorerUrls: ["https://bscscan.com"],
+          },
+        ],
+      });
+      alert("Success! You are now using a Private RPC. Your transactions are hidden from bots.");
+    } catch (err) {
+      console.error("RPC Setup failed", err);
+      alert("Failed to add network automatically. You may need to add it manually in your wallet settings.");
+    }
+  };
 
   const validateSandwichRisk = async () => {
     const { data: latestReserves } = await refetchReserves();
@@ -116,21 +144,35 @@ export function Actions() {
 
   return (
     <div className="space-y-6">
-      <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 text-xs space-y-2">
+      {/* MEV Protection Info & Auto-Setup */}
+      <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-slate-300 font-medium">MEV Sandwich Protection</span>
+          <div className="flex flex-col">
+            <span className="text-slate-200 font-bold text-sm">🛡️ MEV Sandwich Protection</span>
+            <span className="text-[10px] text-slate-500">Powered by PancakeSwap MEV Guard</span>
+          </div>
           <input 
             type="checkbox" 
             checked={usePrivateRPC} 
             onChange={(e) => setUsePrivateRPC(e.target.checked)}
-            className="toggle toggle-primary toggle-xs"
+            className="toggle toggle-primary toggle-sm"
           />
         </div>
-        <p className="text-slate-500 leading-relaxed">
-          Protects your deposit from bots. {usePrivateRPC ? "Status: Active." : "Status: Disabled (Risky)."}
+        
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          Stops bots from seeing your transaction in the public queue. 
+          {usePrivateRPC ? " Status: Active." : " Status: Disabled (Risky)."}
         </p>
+
+        <button 
+          onClick={addMEVProtectedRPC}
+          className="btn btn-outline btn-primary btn-xs w-full normal-case font-medium py-2 h-auto"
+        >
+          One-Tap Setup Private RPC
+        </button>
       </div>
 
+      {/* Acquire PU */}
       <div className="space-y-2">
         <div className="relative">
           <input
@@ -169,6 +211,7 @@ export function Actions() {
         <TxStatus hash={puTx} />
       </div>
 
+      {/* Stake SMOS */}
       <div className="space-y-2">
         <div className="relative">
           <input
@@ -200,6 +243,7 @@ export function Actions() {
         <TxStatus hash={stakeTx} />
       </div>
 
+      {/* Claim Rewards */}
       <button
         className="btn btn-outline w-full"
         disabled={claimMiner.isPending}
