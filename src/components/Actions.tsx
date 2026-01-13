@@ -44,7 +44,6 @@ export function Actions() {
   const [stakeTx, setStakeTx] = useState<`0x${string}`>();
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
   
-  // Anti-Sandwich Toggle
   const [usePrivateRPC, setUsePrivateRPC] = useState(true);
 
   const { data: reserves, refetch: refetchReserves } = useReadContract({
@@ -53,7 +52,7 @@ export function Actions() {
     functionName: "getReserves",
     query: { 
       enabled: !!address,
-      refetchInterval: 5000 // Faster refresh to monitor volatility
+      refetchInterval: 5000 
     },
   });
 
@@ -71,7 +70,8 @@ export function Actions() {
 
   const puWait = useWaitForTransactionReceipt({ hash: puTx });
   const stakeWait = useWaitForTransactionReceipt({ hash: stakeTx });
-  const claimWait = useWaitForTransactionReceipt({ hash: claimWait });
+  // FIXED: Changed hash from claimWait to claimTx
+  const claimWait = useWaitForTransactionReceipt({ hash: claimTx });
 
   useEffect(() => {
     if (puWait.isSuccess || stakeWait.isSuccess || claimWait.isSuccess) {
@@ -85,7 +85,6 @@ export function Actions() {
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
-  /* ───────── ENHANCED DEFENSE LOGIC ───────── */
   const validateSandwichRisk = async () => {
     const { data: latestReserves } = await refetchReserves();
     if (!latestReserves) return true;
@@ -93,15 +92,11 @@ export function Actions() {
     const [res0, res1, lastTimestamp] = latestReserves;
     const now = Math.floor(Date.now() / 1000);
 
-    // 1. VOLATILITY CHECK (Detecting active attacks)
-    // If a trade happened in the last 15 seconds, someone might be manipulating the pool.
     if (now - lastTimestamp < 15) {
       const proceed = confirm("⚠️ High activity detected in the pool (last trade < 15s ago). This could be an attack in progress. Proceed anyway?");
       if (!proceed) return false;
     }
 
-    // 2. DYNAMIC PRICE IMPACT CHECK
-    // Determine which reserve is USDT
     const isUsdtToken0 = USDT_ADDRESS?.toLowerCase() < SMOS_ADDRESS?.toLowerCase();
     const reserveUSDT = isUsdtToken0 ? res0 : res1;
     const poolUSDT = Number(formatUnits(reserveUSDT, 18));
@@ -110,7 +105,6 @@ export function Actions() {
     if (isNaN(depositValue) || depositValue <= 0) return false;
 
     const impact = (depositValue / poolUSDT) * 100;
-
     if (impact > 1) {
       return confirm(`⚠️ High Impact: This deposit is ${impact.toFixed(2)}% of the pool. Small pools are easily sandwiched. Continue?`);
     }
@@ -122,7 +116,6 @@ export function Actions() {
 
   return (
     <div className="space-y-6">
-      {/* MEV Protection Info */}
       <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 text-xs space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-slate-300 font-medium">MEV Sandwich Protection</span>
@@ -138,7 +131,6 @@ export function Actions() {
         </p>
       </div>
 
-      {/* Acquire PU */}
       <div className="space-y-2">
         <div className="relative">
           <input
@@ -158,14 +150,12 @@ export function Actions() {
           onClick={async () => {
             const isSafe = await validateSandwichRisk();
             if (!isSafe) return;
-
             try {
               const hash = await acquirePU.writeContractAsync({
                 address: controller,
                 abi: SPHYGMOS_CONTROLLER_ABI,
                 functionName: "depositPush",
                 args: [parseUnits(puAmount, 18)],
-                // High priority tip to outpace bots in the mempool
                 maxPriorityFeePerGas: parseUnits('3', 'gwei'), 
               });
               setPuTx(hash);
@@ -179,7 +169,6 @@ export function Actions() {
         <TxStatus hash={puTx} />
       </div>
 
-      {/* Stake SMOS */}
       <div className="space-y-2">
         <div className="relative">
           <input
@@ -211,7 +200,6 @@ export function Actions() {
         <TxStatus hash={stakeTx} />
       </div>
 
-      {/* Claim Rewards */}
       <button
         className="btn btn-outline w-full"
         disabled={claimMiner.isPending}
