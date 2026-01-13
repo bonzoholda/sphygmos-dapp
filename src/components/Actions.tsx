@@ -10,7 +10,6 @@ const USDT_ADDRESS = (import.meta.env.VITE_USDT_ADDRESS || "0x55d398326f99059fF7
 const SMOS_ADDRESS = (import.meta.env.VITE_SMOS_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
 const PAIR_ADDRESS = "0x047511EaeDcB7548507Fcb336E219D3c08c9e806" as `0x${string}`;
 
-// 🛡️ VERIFIED PRIVATE RELAY (48CLUB)
 const PRIVATE_RPC_URL = "https://rpc-bsc.48.club";
 
 const PAIR_ABI = [{ constant: true, inputs: [], name: "getReserves", outputs: [{ name: "_reserve0", type: "uint112" }, { name: "_reserve1", type: "uint112" }, { name: "_blockTimestampLast", type: "uint32" }], stateMutability: "view", type: "function" }] as const;
@@ -42,9 +41,10 @@ export function Actions() {
 
   const txBlocked = !isProtected;
 
-  const { data: usdtBalance, isLoading: loadingUsdt } = useBalance({ address, token: USDT_ADDRESS });
-  const { data: smosBalance, isLoading: loadingSmos } = useBalance({ address, token: SMOS_ADDRESS });
-  const { isLoading: loadingReserves } = useReadContract({
+  // 1. Hook up the balances with explicit refetching
+  const { data: usdtBalance, isLoading: loadingUsdt, refetch: refetchUsdt } = useBalance({ address, token: USDT_ADDRESS });
+  const { data: smosBalance, isLoading: loadingSmos, refetch: refetchSmos } = useBalance({ address, token: SMOS_ADDRESS });
+  const { isLoading: loadingReserves, refetch: refetchReserves } = useReadContract({
     address: PAIR_ADDRESS, abi: PAIR_ABI, functionName: "getReserves",
     query: { enabled: !!address, refetchInterval: 5000 },
   });
@@ -60,14 +60,22 @@ export function Actions() {
   const stakeWait = useWaitForTransactionReceipt({ hash: stakeTx });
   const claimWait = useWaitForTransactionReceipt({ hash: claimTx });
 
+  // 2. CRITICAL FIX: Explicitly trigger data refreshes on transaction success
   useEffect(() => {
     if (puWait.isSuccess || stakeWait.isSuccess || claimWait.isSuccess) {
+      // Refresh the Controller state
       refetchAll();
+      // Refresh the standard balances
+      refetchUsdt();
+      refetchSmos();
+      refetchReserves();
+      
+      // Clear inputs and hashes
       if (puWait.isSuccess) { setPuAmount(""); setPuTx(undefined); }
       if (stakeWait.isSuccess) { setStakeAmount(""); setStakeTx(undefined); }
       if (claimWait.isSuccess) { setClaimTx(undefined); }
     }
-  }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess]);
+  }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
   const addMEVProtectedRPC = async () => {
     // @ts-ignore
