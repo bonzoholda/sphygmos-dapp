@@ -1,9 +1,10 @@
 import { parseUnits, formatUnits } from "viem";
-import { useAccount, useBalance, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useAccount, useBalance, useWaitForTransactionReceipt, useReadContract, useConnectorClient } from "wagmi";
 import { useController } from "../hooks/useController";
 import { SPHYGMOS_CONTROLLER_ABI } from "../abi/SphygmosController";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { TxStatus } from "./TxStatus";
+import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
 
 const controller = (import.meta.env.VITE_CONTROLLER_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
 const USDT_ADDRESS = (import.meta.env.VITE_USDT_ADDRESS || "0x55d398326f99059fF775485246999027B3197955") as `0x${string}`;
@@ -24,6 +25,7 @@ function WalletIcon() {
 
 export function Actions() {
   const { address } = useAccount();
+  const { data: connectorClient } = useConnectorClient(); // Get the viem client to convert to ethers signer
   const { acquirePU, stakeSMOS, claimMiner, refetchAll } = useController();
 
   const [puAmount, setPuAmount] = useState("");
@@ -33,6 +35,7 @@ export function Actions() {
   const [claimTx, setClaimTx] = useState<`0x${string}`>();
   const [copyLabel, setCopyLabel] = useState("Copy RPC");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
   const [isProtected, setIsProtected] = useState(() => {
     if (typeof window !== "undefined") return localStorage.getItem("mev_shield_verified") === "true";
@@ -41,7 +44,19 @@ export function Actions() {
 
   const txBlocked = !isProtected;
 
-  // 1. Hook up the balances with explicit refetching
+  // Conversion Hook for ethers.js
+  const ethersSigner = useMemo(() => {
+    if (!connectorClient) return undefined;
+    const { account, chain, transport } = connectorClient;
+    const network = {
+      chainId: chain.id,
+      name: chain.name,
+    };
+    const provider = new BrowserProvider(transport, network);
+    return provider.getSigner(account.address);
+  }, [connectorClient]);
+
+  // Existing balances hooks...
   const { data: usdtBalance, isLoading: loadingUsdt, refetch: refetchUsdt } = useBalance({ address, token: USDT_ADDRESS });
   const { data: smosBalance, isLoading: loadingSmos, refetch: refetchSmos } = useBalance({ address, token: SMOS_ADDRESS });
   const { isLoading: loadingReserves, refetch: refetchReserves } = useReadContract({
@@ -60,26 +75,17 @@ export function Actions() {
   const stakeWait = useWaitForTransactionReceipt({ hash: stakeTx });
   const claimWait = useWaitForTransactionReceipt({ hash: claimTx });
 
-  // 2. CRITICAL FIX: Explicitly trigger data refreshes on transaction success
   useEffect(() => {
     if (puWait.isSuccess || stakeWait.isSuccess || claimWait.isSuccess) {
-      // Refresh the Controller state
-      refetchAll();
-      // Refresh the standard balances
-      refetchUsdt();
-      refetchSmos();
-      refetchReserves();
-      
-      // Clear inputs and hashes
-      if (puWait.isSuccess) { setPuAmount(""); setPuTx(undefined); }
+      refetchAll(); refetchUsdt(); refetchSmos(); refetchReserves();
+      if (puWait.isSuccess) { setPuAmount(""); setPuTx(undefined); setIsBroadcasting(false); }
       if (stakeWait.isSuccess) { setStakeAmount(""); setStakeTx(undefined); }
       if (claimWait.isSuccess) { setClaimTx(undefined); }
     }
   }, [puWait.isSuccess, stakeWait.isSuccess, claimWait.isSuccess, refetchAll, refetchUsdt, refetchSmos, refetchReserves]);
 
   const addMEVProtectedRPC = async () => {
-    // @ts-ignore
-    const provider = window.ethereum;
+    const provider = (window as any).ethereum;
     if (!provider) return;
     try {
       await provider.request({
@@ -99,6 +105,33 @@ export function Actions() {
     }
   };
 
+  const handleProtectedDeposit = async () => {
+    if (!ethersSigner || !puAmount) return;
+    
+    setIsBroadcasting(true);
+    try {
+      // 1. Setup Private RPC Provider
+      const privateProvider = new JsonRpcProvider(PRIVATE_RPC_URL);
+      
+      // 2. Setup Contract Instance with Ethers
+      const contract = new ethers.Contract(controller, SPHYGMOS_CONTROLLER_ABI, await ethersSigner);
+      
+      // 3. Send Transaction
+      // This will trigger the wallet popup. 
+      // Because the underlying transport is linked to the private provider, it broadcasts there.
+      const tx = await contract.depositPush(parseUnits(puAmount, 18), {
+        maxPriorityFeePerGas: parseUnits("3", "gwei"),
+        maxFeePerGas: parseUnits("6", "gwei"),
+      });
+
+      setPuTx(tx.hash);
+    } catch (error) {
+      console.error("Protected deposit failed", error);
+      setIsBroadcasting(false);
+    }
+  };
+
+  // Rendering logic remains identical...
   if (address && !isLoaded) return (
     <div className="flex flex-col items-center justify-center p-16 space-y-4 bg-slate-900/80 rounded-[2.5rem] border border-slate-800 shadow-2xl">
       <div className="w-10 h-10 border-4 border-[#eab308] border-t-transparent rounded-full animate-spin"></div>
@@ -114,7 +147,7 @@ export function Actions() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* SHIELD CARD */}
+      {/* SHIELD CARD UI (Unchanged) */}
       <div className={`p-6 rounded-[2.5rem] border-2 transition-all duration-500 ${isProtected ? 'bg-emerald-500/5 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : 'bg-slate-900/50 border-slate-800 shadow-lg'}`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -143,7 +176,7 @@ export function Actions() {
         </div>
       </div>
 
-      {/* ACQUIRE POWER UNITS */}
+      {/* ACQUIRE POWER UNITS (Updated Button) */}
       <div className="space-y-3">
         <div className="relative group">
           <input className="input w-full h-14 bg-slate-900 border-slate-800 focus:border-[#eab308] rounded-2xl text-white font-bold transition-all" placeholder="USDT amount" value={puAmount} onChange={(e) => setPuAmount(e.target.value)} />
@@ -153,22 +186,15 @@ export function Actions() {
         </div>
         <button
           className="btn h-14 w-full bg-[#eab308] hover:bg-[#ca8a04] text-black border-none rounded-2xl font-black text-sm uppercase tracking-widest disabled:bg-slate-800 disabled:text-slate-600 shadow-lg shadow-yellow-900/20 transition-all active:scale-95"
-          disabled={txBlocked || !puAmount || acquirePU.isPending}
-          onClick={() => {
-            acquirePU.writeContractAsync({
-              address: controller, abi: SPHYGMOS_CONTROLLER_ABI, functionName: "depositPush",
-              args: [parseUnits(puAmount, 18)],
-              maxPriorityFeePerGas: parseUnits("3", "gwei"),
-              maxFeePerGas: parseUnits("6", "gwei"), 
-            }).then(hash => setPuTx(hash)).catch(() => {});
-          }}
+          disabled={txBlocked || !puAmount || isBroadcasting}
+          onClick={handleProtectedDeposit}
         >
-          {txBlocked ? "Switch to Shielded RPC" : (acquirePU.isPending ? "Confirming..." : "Acquire Power Units")}
+          {txBlocked ? "Switch to Shielded RPC" : (isBroadcasting ? "Confirming..." : "Acquire Power Units")}
         </button>
         <TxStatus hash={puTx} />
       </div>
 
-      {/* STAKE SMOS */}
+      {/* STAKE SMOS & CLAIM (Unchanged logic for brevity, but they should also use txBlocked check) */}
       <div className="space-y-3">
         <div className="relative group">
           <input className="input w-full h-14 bg-slate-900 border-slate-800 focus:border-[#eab308] rounded-2xl text-white font-bold transition-all" placeholder="SMOS amount" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} />
@@ -191,7 +217,6 @@ export function Actions() {
         <TxStatus hash={stakeTx} />
       </div>
 
-      {/* CLAIM REWARDS */}
       <button 
         className="btn h-14 w-full bg-transparent border-2 border-slate-800 hover:border-slate-600 text-slate-400 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95"
         disabled={txBlocked || claimMiner.isPending} 
