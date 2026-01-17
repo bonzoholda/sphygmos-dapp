@@ -31,14 +31,9 @@ export default function App() {
   // Optimized Telegram Detection
   const tg = useMemo(() => {
     const telegramApp = (window as any).Telegram?.WebApp;
-    // Only return if we are actually inside the Telegram environment
     return telegramApp?.platform !== 'unknown' ? telegramApp : null;
   }, []);
 
-  /**
-   * Telegram Native Integration
-   * This effect manages the Telegram Main Button and App Expansion
-   */
   useEffect(() => {
     if (!tg) return;
 
@@ -50,7 +45,6 @@ export default function App() {
       tg.MainButton.show();
       
       const handleMainButtonClick = () => {
-        // Haptic feedback for the click
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
         open();
       };
@@ -65,7 +59,6 @@ export default function App() {
     }
   }, [tg, isConnected, open]);
 
-  // Enhanced Tab Switcher with Haptic Feedback
   const toggleTab = (tab: "mining" | "trade") => {
     setActiveTab(tab);
     if (tg?.HapticFeedback) {
@@ -74,7 +67,22 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black bg-grid p-4 pb-24 md:p-6">
+    <div className="min-h-screen bg-black bg-grid p-4 pb-24 md:p-6 relative">
+      
+      {/* ───── HOME LOGO NAVIGATION (YELLOW NEON THEME) ───── */}
+      <div className="fixed top-4 left-4 z-[100] md:top-6 md:left-6">
+        <a 
+          href="https://bonzoholda.github.io/sphygmos-protocol/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 border border-yellow-400/30 backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(250,204,21,0.2)]"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+        </a>
+      </div>
+
       {/* ───── Logo ───── */}
       <div className="flex justify-center mb-8">
         <div className="pulse-glow">
@@ -118,7 +126,6 @@ export default function App() {
               The Heartbeat of Perpetual DeFi
             </h3>
 
-            {/* FIX: Ensure the button is visible everywhere if the MainButton isn't showing */}
             <div className="flex justify-center">
               <ConnectWallet />
             </div>
@@ -134,7 +141,6 @@ export default function App() {
 
             <hr className="border-yellow-400/10" />
 
-            {/* Smart Contract Interaction Guards */}
             {CONTROLLER_ADDRESS && (
               <TokenApprovalGuard 
                 tokenAddress={MOCK_USDT_ADDRESS}
@@ -161,9 +167,6 @@ export default function App() {
   );
 }
 
-/**
- * Re-usable Stat Component
- */
 function Stat({ label, value, decimals }: { label: string; value?: bigint; decimals: number; }) {
   return (
     <div className="rounded-xl bg-black/70 border border-yellow-400/20 p-3 text-center">
