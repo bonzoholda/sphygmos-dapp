@@ -66,21 +66,29 @@ export default function App() {
     }
   };
 
+  // Exit Logic: Opens site in new window and closes dApp
+  const handleExit = () => {
+    window.open("https://bonzoholda.github.io/sphygmos-protocol/", "_blank");
+    if (tg) {
+      tg.close();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black bg-grid p-4 pb-24 md:p-6 relative">
       
-      {/* ───── HOME LOGO NAVIGATION (YELLOW NEON THEME) ───── */}
-      <div className="fixed top-4 left-4 z-[100] md:top-6 md:left-6">
-        <a 
-          href="https://bonzoholda.github.io/sphygmos-protocol/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 border border-yellow-400/30 backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(250,204,21,0.2)]"
+      {/* ───── HOME LOGO NAVIGATION (FIXED INTERACTION) ───── */}
+      {/* pointer-events-none ensures the container doesn't block the Acquire button below it */}
+      <div className="fixed top-4 left-4 z-[100] md:top-6 md:left-6 pointer-events-none">
+        <button 
+          onClick={handleExit}
+          /* pointer-events-auto makes the button itself clickable */
+          className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 border border-yellow-400/30 backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(250,204,21,0.2)]"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
-        </a>
+        </button>
       </div>
 
       {/* ───── Logo ───── */}
