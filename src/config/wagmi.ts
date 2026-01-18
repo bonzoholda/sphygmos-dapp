@@ -21,7 +21,7 @@ export const wagmiConfig = createConfig({
     // Logic: If the first RPC fails or times out, it moves to the next one automatically.
     [bsc.id]: fallback([
       // 1. High Security (MEV Protection)
-      http("https://bsc-mev.pancakeswap.finance"),
+      http("https://rpc-bsc.48.club"),
       // 1.b. next option
       http("https://bsc.mev-share.flashbots.net"),
       // 2. High Reliability (PancakeSwap Private Node)
